@@ -212,17 +212,32 @@ function QLessJob:fail(...)
   )
 end
 
-function QLessJob:heartbeat(cb)
-  self.client:_call(self,
-   "heartbeat",
-    self.jid,
-    self.worker_name,
-    json.encode(self.data),
-    function(self, err, res)
-      if res and not err then self.expires_at = res end
-      if cb then cb(self, err, res) end
-    end
-  )
+function QLessJob:heartbeat(skip_data, cb)
+  if type(skip_data) == 'function' then
+    skip_data, cb = nil, skip_data
+  end
+
+  local on_hb = function(self, err, res)
+    if res and not err then self.expires_at = res end
+    if cb then cb(self, err, res) end
+  end
+
+  if skip_data then
+    self.client:_call(self,
+     "heartbeat",
+      self.jid,
+      self.worker_name,
+      on_hb
+    )
+  else
+    self.client:_call(self,
+     "heartbeat",
+      self.jid,
+      self.worker_name,
+      json.encode(self.data),
+      on_hb
+    )
+  end
 end
 
 function QLessJob:complete(...)
