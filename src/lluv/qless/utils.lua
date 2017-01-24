@@ -1,21 +1,50 @@
+local function prequire(...)
+  local ok, mod = pcall(require, ...)
+  if not ok then return nil, mod end
+  return mod, ...
+end
+
 local uuid         = require "uuid"
 local sha1         = require "bgcrypto.sha1"
-local psapi        = require "pdh.psapi"
 local socket       = require "socket"
 local json         = require "cjson"
 local uv           = require "lluv"
 
 local Utils do
 
+local getpid do
+
 local _pid
-local function getpid()
-  if not _pid then
-    local proc = psapi.process()
-    _pid = proc:pid()
-    proc:destroy()
+
+local psapi = prequire("pdh.psapi")
+if psapi then
+  getpid = function ()
+    if not _pid then
+      local proc = psapi.process()
+      _pid = proc:pid()
+      proc:destroy()
+    end
+    return _pid
   end
-  return _pid
 end
+
+if not getpid then
+  local posix = prequire ("posix")
+  if not (posix and posix.getpid) then
+    posix = prequire ("posix.unistd")
+  end
+
+  if posix and posix.getpid then
+    getpid = function ()
+      if not _pid then _pid = posix.getpid() end
+      return _pid
+    end
+  end
+end
+
+assert(getpid, 'can not find getpid implementation. Try install lua-posix library for *nix or lua-pdh for Windwos')
+end
+
 
 local _hostname
 local function gethostname()
