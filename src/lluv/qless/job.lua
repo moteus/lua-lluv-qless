@@ -1,0 +1,378 @@
+local uv           = require "lluv"
+local ut           = require "lluv.utils"
+local Utils        = require "qless.utils"
+local BaseClass    = require "qless.base"
+local EventEmitter = require "EventEmitter"
+
+local unpack = unpack or table.unpack
+
+local json, now, pass_self, pack_args, dummy, is_callable =
+  Utils.json, Utils.now, Utils.pass_self, Utils.pack_args,
+  Utils.dummy, Utils.is_callable
+
+-------------------------------------------------------------------------------
+local QLessJob = ut.class(BaseClass) do
+
+local async_get = { };
+
+local async_set = { priority = true };
+
+function QLessJob:__init(client, atts)
+  self.__base.__init(self)
+
+  self.client            = client
+  self.jid               = atts.jid
+  self.data              = json.decode(atts.data or "{}")
+  self.tags              = atts.tags
+  self.state             = atts.state
+  self.tracked           = atts.tracked
+  self.failure           = atts.failure
+  self.dependencies      = atts.dependencies
+  self.dependents        = atts.dependents
+  self.spawned_from_jid  = atts.spawned_from_jid
+  self.expires_at        = atts.expires
+  self.worker_name       = atts.worker
+  self.klass             = atts.klass
+  self.queue_name        = atts.queue
+  self.original_retries  = atts.retries
+  self.retries_left      = atts.remaining
+  self.raw_queue_history = atts.history
+  self.state_changed     = false
+
+  self._priority         = atts.priority
+
+  self._ee               = nil
+
+  return self
+end
+
+function QLessJob:__tostring()
+  return self.__base.__tostring(self, "QLess::Job")
+end
+
+function QLessJob:__index(k)
+  if async_get[k] then
+    error('Parameter `' .. k .. '` can be retrive only in async way', 2)
+  end
+
+  if async_set[k] then
+    return self['_' .. k]
+  end
+
+  return rawget(QLessJob, k) or QLessJob.__base[k]
+end
+
+function QLessJob:__newindex(k, v)
+  if async_set[k] then
+    error('Parameter `' .. k .. '` can be set only in async way', 2)
+  end
+
+  if async_get[k] then
+    self['_' .. k] = v
+    return
+  end
+
+  rawset(self, k, v)
+end
+
+-- For building a job from attribute data, without the roundtrip to redis.
+function QLessJob.build(client, klass, atts)
+  local defaults = {
+    jid              = client:generate_jid(),
+    spawned_from_jid = nil,
+    data             = {},
+    klass            = klass,
+    priority         = 0,
+    tags             = {},
+    worker           = 'mock_worker',
+    expires          = now() + (60 * 60), -- an hour from now
+    state            = 'running',
+    tracked          = false,
+    queue            = 'mock_queue',
+    retries          = 5,
+    remaining        = 5,
+    failure          = {},
+    history          = {},
+    dependencies     = {},
+    dependents       = {},
+  }
+  setmetatable(atts, { __index = defaults })
+  atts.data = cjson_encode(atts.data)
+
+  return QLessJob.new(client, atts)
+end
+
+function QLessJob:queue()
+  return self.client.queues:queue(self.queue_name)
+end
+
+function QLessJob:set_priority(v, cb)
+  assert(tonumber(v))
+
+  self.client:_call(self, 'priority', v, function(self, err, res)
+    if not err then self._priority = v end
+    if cb then return cb(self, err, res) end
+  end)
+end
+
+function QLessJob:perform(cb, ...)
+  local ok, task = pcall(require, self.klass)
+  if not ok then
+    return uv.defer(cb, self,
+      string.format("[%s] %s (-1)",
+        self.queue_name .. "-invalid-task",
+        "Module '" .. tostring(self.klass) .. "' could not be found"
+      )
+    )
+  end
+
+  if (type(task) ~= 'table') or not is_callable(task.perform) then
+    return uv.defer(cb, self,
+      string.format("[%s] %s (-1)",
+        self.queue_name .. "-invalid-task",
+        "Job '" .. self.klass .. "' has no perform function"
+      )
+    )
+  end
+
+  local ok, err = pcall(task.perform, self, function(...)
+    -- `cb` can be called like `job:complete(cb)/job:fail(..., cb)`
+    -- or just `cb()/cb('error')`
+    -- Not sure I want requre `cb(job)/cb(job, 'error')`
+    if ... == self then return cb(...) end
+    return cb(self, ...)
+  end, ...)
+
+  if not ok then
+    return uv.defer(cb, self,
+      string.format("[%s] %s (-1)",
+        "failed-" .. self.queue_name,
+        "'" .. self.klass .. "' " .. (err or "")
+      )
+    )
+  end
+end
+
+function QLessJob:description()
+  return self.klass .. " (" .. self.jid .. " / " .. self.queue_name .. " / " .. self.state .. ")"
+end
+
+function QLessJob:ttl()
+  return self.expires_at - now()
+end
+
+function QLessJob:spawned_from(cb)
+  if not self.spawned_from_jid then
+    return uv.defer(cb, self, nil, nil)
+  end
+
+  if self.spawned_from then
+    return uv.defer(cb, self, nil, self.spawned_from)
+  end
+
+  self.client.jobs:get(self.spawned_from_jid, pass_self(self, cb or dummy))
+end
+
+function QLessJob:requeue(queue, ...)
+  local options, cb = ...
+  if is_callable(options) then options, cb = nil, options end
+  if not options then options = {} end
+
+  self:begin_state_change("requeue")
+  self.client:_call(self, "requeue", 
+    self.client.worker_name, queue, self.jid, self.klass,
+    json.encode(options.data or self.data),
+    options.delay or 0,
+    "priority", options.priority or self.priority,
+    "tags",     json.encode(options.tags or self.tags),
+    "retries",  options.retries or self.original_retries,
+    "depends",  json.encode(options.depends or self.dependencies),
+    function(self, err, res)
+      self:finish_state_change("requeue", err)
+      if cb then cb(self, err, res) end
+    end
+  )
+end
+
+function QLessJob:fail(...)
+  local args, cb, group, message = pack_args(...)
+  group, message = args[1], args[2]
+
+  self:begin_state_change("fail")
+  self.client:_call(self, "fail",
+    self.jid,
+    self.client.worker_name,
+    group or "[unknown group]",
+    message or "[no message]",
+    json.encode(self.data),
+    function(self, err, res)
+      self:finish_state_change("fail", err)
+      cb(self, err, res)
+    end
+  )
+end
+
+function QLessJob:heartbeat(cb)
+  self.client:_call(self,
+   "heartbeat",
+    self.jid,
+    self.worker_name,
+    json.encode(self.data),
+    function(self, err, res)
+      if res and not err then self.expires_at = res end
+      if cb then cb(self, err, res) end
+    end
+  )
+end
+
+function QLessJob:complete(...)
+  local args, cb, next_queue, options = pack_args(...)
+  next_queue, options = args[1], args[2] or {}
+
+  local function on_complete(self, err, res)
+    self:finish_state_change("complete", err)
+    if cb then cb(self, err, res) end
+  end
+
+  self:begin_state_change("complete")
+  if next_queue then
+    self.client:_call(self, "complete",
+      self.jid,
+      self.worker_name,
+      self.queue_name,
+      json.encode(self.data),
+      "next", next_queue,
+      "delay", options.delay or 0,
+      "depends", json.encode(options.depends or {}),
+      on_complete
+    )
+  else
+    self.client:_call(self, "complete",
+      self.jid,
+      self.worker_name,
+      self.queue_name,
+      json.encode(self.data),
+      on_complete
+    )
+  end
+end
+
+function QLessJob:retry(...)
+  local args, cb, delay, group, message = pack_args(...)
+  delay, group, message = args[1], args[2], args[3]
+
+  self:begin_state_change("retry")
+  self.client:_call(self, "retry",
+    self.jid,
+    self.queue_name,
+    self.worker_name,
+    delay or 0,
+    group or "[unknown group]",
+    message or "[no message]",
+    function(self, err, res)
+      self:end_state_change("retry", err)
+      cb(self, err, res)
+    end
+  )
+end
+
+function QLessJob:cancel(cb)
+  self:begin_state_change("cancel")
+  self.client:_call(self, "cancel", self.jid, function(self, err, res)
+    self:finish_state_change("cancel", err)
+    if cb then cb(self, err, res) end
+  end)
+end
+
+function QLessJob:timeout(cb)
+  return self.client:_call(self, "timeout", self.jid, cb or dummy)
+end
+
+function QLessJob:track(cb)
+  return self.client:_call(self, "track", "track", self.jid, cb or dummy)
+end
+
+function QLessJob:untrack()
+  return self.client:_call(self, "track", "untrack", self.jid, cb or dummy)
+end
+
+function QLessJob:tag(...)
+  return self.client:_call(self, "tag", "add", self.jid, ...)
+end
+
+function QLessJob:untag(...)
+  return self.client:_call(self, "tag", "remove", self.jid, ...)
+end
+
+function QLessJob:depend(...)
+  return self.client:_call(self, "depends", self.jid, "on", ...)
+end
+
+function QLessJob:undepend(...)
+  return self.client:_call(self, "depends", self.jid, "off", ...)
+end
+
+function QLessJob:log(message, ...)
+  local data, cb = ...
+  if is_callable(data) then data, cb = nil, data end
+
+  if data then
+    data = cjson_encode(data)
+    self.client:_call(self, "log", self.jid, message, data, cb)
+  else
+    self.client:_call(self, "log", self.jid, message, cb)
+  end
+end
+
+function QLessJob:begin_state_change(event)
+  local before = self["before_" .. event]
+  if before and type(before) == "function" then
+    before()
+  end
+end
+
+function QLessJob:finish_state_change(event, err)
+  if not err then
+    self.state_changed = true
+  end
+
+  local after = self["after_" .. event]
+  if after and type(after) == "function" then
+    after(err)
+  end
+end
+
+function QLessJob:emit(...)
+  if self._ee then self._ee:emit(...) end
+end
+
+function QLessJob:on(...)
+  if not self._ee then
+    self._ee = EventEmitter.new{self=self}
+  end
+  self._ee:on(...)
+end
+
+function QLessJob:onAny(...)
+  if not self._ee then
+    self._ee = EventEmitter.new{self=self}
+  end
+  self._ee:onAny(...)
+end
+
+function QLessJob:off(...)
+  if self._ee then
+    self._ee:off(...)
+  end
+end
+
+function QLessJob:offAny(...)
+  if self._ee then
+    self._ee:offAny(...)
+  end
+end
+
+end
+-------------------------------------------------------------------------------
+
+return QLessJob
