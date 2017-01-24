@@ -14,6 +14,65 @@ local QLESS_LUA_PATH do
 end
 
 -------------------------------------------------------------------------------
+local QLessLuaScriptError = ut.class() do
+
+-- @classmethod
+local pat = 'user_script:(%d+):%s*(.-)%s*$'
+function QLessLuaScriptError.match(s)
+  local l, e  = string.match(s, pat)
+  if e then
+    local _, e2 = string.match(e, pat)
+    if e2 then e = e2 end
+    return QLessLuaScriptError.new(e, 'Line: ' .. l)
+  end
+end
+
+function QLessLuaScriptError:__init(msg, ext)
+  self._msg = msg
+  self._ext = ext
+
+  return self
+end
+
+function QLessLuaScriptError:cat()
+  return 'QLESS'
+end
+
+function QLessLuaScriptError:name()
+  return 'LUA'
+end
+
+function QLessLuaScriptError:no()
+  return -1
+end
+
+function QLessLuaScriptError:msg()
+  return self._msg
+end
+
+function QLessLuaScriptError:ext()
+  return self._ext
+end
+
+function QLessLuaScriptError:__tostring()
+  local err = string.format("[%s][%s] %s (%d)",
+    self:cat(), self:name(), self:msg(), self:no()
+  )
+  if self:ext() then
+    err = string.format("%s - %s", err, self:ext())
+  end
+  return err
+end
+
+function QLessLuaScriptError:__eq(lhs)
+  return getmetatable(lhs) == QLessLuaScriptError
+    and self:msg() == lhs:msg()
+end
+
+end
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
 local QLessLuaScript = ut.class(BaseClass) do
 
 local script_cache = {}
@@ -56,8 +115,20 @@ function QLessLuaScript:_call_again(_self, cb, args)
   self._redis:evalsha(self._sha, "0", unpack(args))
 end
 
+local function check_error(cb)
+  return function(self, err, ...)
+    if err then
+      if err:cat() == 'REDIS' and err:name() == 'ERR' then
+        err = QLessLuaScriptError.match(err:msg()) or err
+      end
+    end
+    return cb(self, err, ...)
+  end
+end
+
 function QLessLuaScript:call(_self, ...)
   local args, cb, n = pack_args(...)
+  cb = check_error(cb)
 
   for i = 1, n do
     assert(args[i] ~= nil)
