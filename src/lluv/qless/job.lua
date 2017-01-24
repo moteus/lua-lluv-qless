@@ -98,7 +98,7 @@ function QLessJob.build(client, klass, atts)
     dependents       = {},
   }
   setmetatable(atts, { __index = defaults })
-  atts.data = cjson_encode(atts.data)
+  atts.data = json.encode(atts.data)
 
   return QLessJob.new(client, atts)
 end
@@ -308,7 +308,7 @@ function QLessJob:track(cb)
   return self.client:_call(self, "track", "track", self.jid, cb or dummy)
 end
 
-function QLessJob:untrack()
+function QLessJob:untrack(cb)
   return self.client:_call(self, "track", "untrack", self.jid, cb or dummy)
 end
 
@@ -333,7 +333,7 @@ function QLessJob:log(message, ...)
   if is_callable(data) then data, cb = nil, data end
 
   if data then
-    data = cjson_encode(data)
+    data = json.encode(data)
     self.client:_call(self, "log", self.jid, message, data, cb)
   else
     self.client:_call(self, "log", self.jid, message, cb)

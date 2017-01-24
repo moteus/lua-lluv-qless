@@ -28,9 +28,9 @@ function QLessConfig:get(k, cb)
 end
 
 function QLessConfig:all(cb)
-  local res, err = self._client:call("config.get", function(self, err, res)
+  self._client:call("config.get", function(self, err, res)
     if res and not err then res = json.decode(res) end
-    if cb then cb(self._client, err, res) end
+    if cb then cb(self, err, res) end
   end)
 end
 

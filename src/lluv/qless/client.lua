@@ -191,7 +191,7 @@ function QLessClient:call(...)
   return self:_call(self, ...)
 end
 
-function QLessClient:track(self, jid, cb)
+function QLessClient:track(jid, cb)
   return self:call("track", "track", jid, cb or dummy)
 end
 
@@ -203,7 +203,7 @@ function QLessClient:tags(...)
   local args, cb, offset, count = pack_args(...)
   offset, count = args[1] or 0, args[2] or 100
 
-  return self:call("tag", "top", offset or 0, count or 100, function(self, err, res)
+  return self:call("tag", "top", offset, count, function(self, err, res)
     if res and not err then res = json.decode(res) end
     if cb then cb(self, err, res) end
   end)

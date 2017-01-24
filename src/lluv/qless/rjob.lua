@@ -2,11 +2,7 @@ local ut           = require "lluv.utils"
 local Utils        = require "qless.utils"
 local BaseClass    = require "qless.base"
 
-local unpack = unpack or table.unpack
-
-local json, now, pass_self, pack_args, dummy, is_callable =
-  Utils.json, Utils.now, Utils.pass_self, Utils.pack_args,
-  Utils.dummy, Utils.is_callable
+local json, dummy = Utils.json, Utils.dummy
 
 -------------------------------------------------------------------------------
 local QLessRecurJob = ut.class(BaseClass) do
@@ -80,17 +76,19 @@ end
 end
 
 function QLessRecurJob:update(property, value, cb)
-  if property == "data" and value then value = cjson_encode(value) end
+  if property == "data" and value then value = json.encode(value) end
 
-  self.client:_call("recur.update", self.jid, property, value, function(self, err, res)
+  self.client:_call(self, "recur.update", self.jid, property, value, function(self, err, res)
     if not err then self["_" .. property] = value end
-    if cb then return cb(self, err, value) end
+    res = (res == 1) and value or res
+    if cb then return cb(self, err, res) end
   end)
 end
 
 function QLessRecurJob:requeue(queue, cb)
-  self.client:_call("recur.update", self.jid, "queue", queue, function(self, err, res)
+  self.client:_call(self, "recur.update", self.jid, "queue", queue, function(self, err, res)
     if not err then self.queue_name = queue end
+    res = (res == 1) and queue or res
     if cb then cb(self, err, res) end
   end)
 end

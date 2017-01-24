@@ -5,7 +5,11 @@ local QLessJob      = require "qless.job"
 local QLessRecurJob = require "qless.rjob"
 
 local unpack = unpack or table.unpack
+
 local json, pack_args, dummy = Utils.json, Utils.pack_args, Utils.dummy
+
+local DEFAULT_OFFSET = 0
+local DEFAULT_COUNT  = 25
 
 -------------------------------------------------------------------------------
 local QLessJobs = ut.class(BaseClass) do
@@ -32,19 +36,18 @@ function QLessJobs:complete(...)
 end
 
 function QLessJobs:tracked(cb)
-    local res = self._client:_call(self, "track", function(self, err, res)
-      if err then return cb(self, err, res) end
-      res = json.decode(res)
+  local res = self._client:_call(self, "track", function(self, err, res)
+    if err then return cb(self, err, res) end
+    res = json.decode(res)
 
-      -- local tracked_jobs = {}
-      -- for k,v in pairs(res.jobs) do
-      --     tracked_jobs[k] = qless_job.new(self.client, v)
-      -- end
-      -- res.jobs = tracked_jobs
-      -- return res
+    local tracked_jobs = {}
+    for k,v in pairs(res.jobs) do
+      tracked_jobs[k] = QLessJob.new(self._client, v)
+    end
+    res.jobs = tracked_jobs
 
-      cb(self, nil, res)
-    end)
+    cb(self, nil, res)
+  end)
 end
 
 function QLessJobs:tagged(...)
@@ -62,7 +65,7 @@ end
 
 function QLessJobs:failed(...)
   local args, cb = pack_args(...)
-  tag, offset, count = unpack(args)
+  local tag, offset, count = unpack(args)
 
   if not tag then
     return self._client:_call(self, "failed", cb)
@@ -73,7 +76,7 @@ function QLessJobs:failed(...)
     count  or DEFAULT_COUNT,
     function(self, err, res)
       if err then return cb(self, err, res) end
-      res = cjson_decode(res)
+      res = json.decode(res)
 
       if res.jobs and #res.jobs > 0 then
         res.jobs[#res.jobs + 1] = function(self, err, jobs)
@@ -114,7 +117,7 @@ function QLessJobs:multiget(...)
   local args, cb = pack_args(...)
 
   args[#args + 1] = function(self, err, res)
-    if res and not err then res = cjson_decode(res) end
+    if res and not err then res = json.decode(res) end
 
     local jobs = {}
     for _, data in ipairs(res) do

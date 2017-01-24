@@ -103,7 +103,7 @@ local function reconnect_redis(cnn, interval, on_connect, on_disconnect)
     cnn:open(error_handler)
   end):stop()
 
-  error_handler = function(self, err)
+  error_handler = function(_, err)
     if err and connected then
       on_disconnect(cnn, err)
     end

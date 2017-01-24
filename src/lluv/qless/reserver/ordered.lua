@@ -40,7 +40,7 @@ function QLessReserverOrdered:reserve(cb)
     return uv.defer(on_reserver_finish, self, cb)
   end
 
-  q:pop(function(q, err, job)
+  q:pop(function(_, err, job)
     self._requests = self._requests - 1
 
     assert(self._requests >= 0)

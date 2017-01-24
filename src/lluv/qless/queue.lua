@@ -3,8 +3,6 @@ local Utils        = require "qless.utils"
 local BaseClass    = require "qless.base"
 local QLessJob     = require "qless.job"
 
-local unpack = unpack or table.unpack
-
 local json, now, pass_self, pack_args, dummy, is_callable =
   Utils.json, Utils.now, Utils.pass_self, Utils.pack_args, Utils.dummy, Utils.is_callable
 
@@ -39,23 +37,23 @@ local function call(self, cmd, ...)
   )
 end
 
-function QLessQueueJobs:running(self, ...)
+function QLessQueueJobs:running(...)
   return call(self, "running", ...)
 end
 
-function QLessQueueJobs:stalled(self, ...)
+function QLessQueueJobs:stalled(...)
   return call(self, "stalled", ...)
 end
 
-function QLessQueueJobs:scheduled(self, ...)
+function QLessQueueJobs:scheduled(...)
   return call(self, "scheduled", ...)
 end
 
-function QLessQueueJobs:depends(self, ...)
+function QLessQueueJobs:depends(...)
   return call(self, "depends", ...)
 end
 
-function QLessQueueJobs:recurring(self, ...)
+function QLessQueueJobs:recurring(...)
   return call(self, "recurring", ...)
 end
 
@@ -81,7 +79,7 @@ function QLessQueue:__tostring()
 end
 
 function QLessQueue:counts(cb)
-  self.client:_call("queues", self.name, function(self, err, res)
+  self.client:_call(self, "queues", self.name, function(self, err, res)
     if res and not err then res = json.decode(res) end
     if cb then cb(self, err, res) end
   end)
@@ -103,13 +101,13 @@ function QLessQueue:get_heartbeat(cb)
 end
 
 function QLessQueue:paused(cb)
-  self:counts(function(self, err, cb)
+  self:counts(function(self, err, res)
     if res and not err then res = res.paused or false end
     if cb then cb(self, err, res) end
   end)
 end
 
-function QLessQueue:pause(self, ...)
+function QLessQueue:pause(...)
   local options, cb = ...
   if is_callable(options) then options, cb = nil, options end
   if not options then options = {} end
@@ -162,10 +160,10 @@ function QLessQueue:recur(klass, data, interval, ...)
     self.name,
     options.jid or self.client:generate_jid(),
     klass,
-    cjson_encode(data or {}),
+    json.encode(data or {}),
     "interval", interval, options.offset or 0,
     "priority", options.priority or 0,
-    "tags", cjson_encode(options.tags or {}),
+    "tags", json.encode(options.tags or {}),
     "retries", options.retries or 5,
     "backlog", options.backlog or 0,
     cb or dummy
@@ -230,7 +228,7 @@ function QLessQueue:length(cb)
 
   local len = 0
 
-  redis:multi(function(cli, err, data)
+  redis:multi(function(_, err)
     if err and err:cat() == 'REDIS' then
       error("Please fix me:" .. tostring(err))
     end
@@ -240,7 +238,7 @@ function QLessQueue:length(cb)
   redis:zcard("ql:q:"..self.name.."-work"  )
   redis:zcard("ql:q:"..self.name.."-scheduled")
 
-  redis:exec(function(cli, err, res)
+  redis:exec(function(_, err, res)
     if err then return cb(self, err, res) end
     for _, v in ipairs(res) do len = len + v end
     cb(self, err, len)

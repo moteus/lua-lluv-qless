@@ -43,11 +43,12 @@ function QLessWorkerSerial:__init(options)
     self._ee:emit(data.jid, data)
   end)
 
-  for i, name in ipairs(options.queues) do
+  for _, name in ipairs(options.queues) do
     if type(name) == 'string' then
       local q = self._client:queue(name)
       self._queues[#self._queues + 1] = q
     else
+      local q = name
       --!@ todo supports queues from multiple servers
       assert(q.client == self.client, 'Worker supports queues only from one server')
       self._queues[#self._queues + 1] = q

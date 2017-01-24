@@ -3,8 +3,6 @@ local Utils         = require "qless.utils"
 local BaseClass     = require "qless.base"
 local EventEmitter  = require "EventEmitter"
 
-local unpack = unpack or table.unpack
-
 local dummy, is_callable = Utils.dummy, Utils.is_callable
 
 local reconnect_redis = Utils.reconnect_redis
@@ -60,20 +58,28 @@ end
 function QLessEvents:subscribe(events, cb)
   cb = cb or dummy
 
+  local n = 0
   for _, event in ipairs(events) do
     if not self._events[event] then
       self._events[event] = true
       --! @fixme do not use private field
       if self._redis._cnn then
+        n = n + 1
         self._redis:subscribe(ql_ns .. event, function(_, err, res)
+          n = n - 1
           if err then
             self._client.logger.error('%s: subscribe %s - fail: %s', tostring(self), event, tostring(err))
           else
             self._client.logger.info('%s: subscribe %s - pass', tostring(self), event, tostring(err))
           end
+          if n == 0 then cb(self, err, res) end
         end)
       end
     end
+  end
+
+  if n == 0 then
+    uv.defer(cb, self, nil, 0)
   end
 end
 
