@@ -38,6 +38,7 @@ function QLessJob:__init(client, atts)
   self.retries_left      = atts.remaining
   self.raw_queue_history = atts.history
   self.state_changed     = false
+  self.klass_prefix      = atts.klass_prefix or ''
 
   self._priority         = atts.priority
 
@@ -116,7 +117,7 @@ function QLessJob:set_priority(v, cb)
 end
 
 function QLessJob:perform(cb, ...)
-  local ok, task = pcall(require, self.klass)
+  local ok, task = pcall(require, self.klass_prefix .. self.klass)
   if not ok then
     return uv.defer(cb, self,
       string.format("[%s] %s (-1)",
@@ -130,7 +131,7 @@ function QLessJob:perform(cb, ...)
     return uv.defer(cb, self,
       string.format("[%s] %s (-1)",
         self.queue_name .. "-invalid-task",
-        "Job '" .. self.klass .. "' has no perform function"
+        "Module '" .. self.klass .. "' has no perform function"
       )
     )
   end

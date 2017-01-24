@@ -18,7 +18,7 @@ local QLessLuaScript = ut.class(BaseClass) do
 
 local script_cache = {}
 
-function QLessLuaScript:__init(redis, path)
+function QLessLuaScript:__init(client, path)
   self.__base.__init(self)
 
   path = path or QLESS_LUA_PATH
@@ -30,7 +30,8 @@ function QLessLuaScript:__init(redis, path)
   end
 
   self._script, self._sha = cached[1], cached[2]
-  self._redis = redis
+  self._client = client
+  self._redis  = client._redis
 
   return self
 end

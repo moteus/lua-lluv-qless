@@ -17,7 +17,7 @@ local json, now, generate_jid, pass_self, pack_args, dummy, gethostname, getpid 
   Utils.json, Utils.now, Utils.generate_jid, Utils.pass_self, Utils.pack_args,
   Utils.dummy, Utils.gethostname, Utils.getpid
 
-local reconnect_redis = Utils.reconnect_redis
+local reconnect_redis, dummy_logger = Utils.reconnect_redis, Utils.dummy_logger
 
 -------------------------------------------------------------------------------
 -- Queues, to be accessed via qless.queues etc.
@@ -97,7 +97,20 @@ function QLessClient:__init(options)
     self._redis = redis.Connection.new(options)
   end
 
-  self._script      = QLessLuaScript.new(self._redis)
+  if options.logger then
+    -- create new logger with our formatter
+    local logger = options.logger
+    self.logger = require "log".new(
+      logger.lvl(),
+      logger.writer(),
+      require 'log.formatter.pformat'.new(),
+      logger.format()
+    )
+  else
+    self.logger = dummy_logger
+  end
+
+  self._script      = QLessLuaScript.new(self)
 
   self.config       = QLessConfig.new(self)
   self.queues       = QLessQueues.new(self)
@@ -106,10 +119,18 @@ function QLessClient:__init(options)
   self.worker_name  = string.format("%s-%d", gethostname(), getpid())
 
   self._last_redis_error = nil
+
   --! @fixme use configuriable reconnect interval
   self._reconnect_redis  = reconnect_redis(self._redis, 5000, function()
+    self.logger.info('%s: connected to redis server', tostring(self))
     self._last_redis_error = nil
   end, function(_, err)
+    if err then
+      self.logger.error('%s: disconnected from redis server: %s', tostring(self), tostring(err))
+    else
+      self.logger.info('%s: disconnected from redis server', tostring(self))
+    end
+
     self._last_redis_error = err
   end)
 
@@ -155,8 +176,7 @@ function QLessClient:job(jid, cb)
 end
 
 function QLessClient:events()
-  local _redis = self:new_redis_connection()
-  return QLessEvents.new(_redis)
+  return QLessEvents.new(self)
 end
 
 function QLessClient:_call(_self, command, ...)

@@ -63,15 +63,36 @@ end
 
 function QLessWorkerSerial:run()
 
-  local function on_reserve(_, err, job)
+  local on_perform, on_reserve
+
+  on_perform = function(job, err, res)
+    self._active_jobs = self._active_jobs - 1
+
+    assert(self._active_jobs >= 0)
+    self._ee:off(job.jid)
+
+    if not job.state_changed then
+      if err then job:fail(err, res)
+      else job:complete() end
+    end
+
+    local n = self._reserver:progressed() + self._active_jobs
+    if n < self._max_jobs then
+      self._fetch_timer:stop()
+      return self._reserver:reserve(on_reserve)
+    end
+  end
+
+  on_reserve = function(_, err, job)
     assert(not self._fetch_timer:active())
     assert(self._active_jobs < self._max_jobs)
 
     -- we try all active queues or get error
     if not job then
       if err then
-        --! @todo handle error
+        self._client.logger.error('%s: error reserving job: %s', tostring(self), tostring(err))
       end
+
       if self._reserver:progressed() == 0 then
         self._fetch_timer:again(self._poll_interval)
       end
@@ -85,24 +106,8 @@ function QLessWorkerSerial:run()
     self._ee:on(job.jid, function(_, jid, data)
       job:emit(data.event, data)
     end)
-  
-    job:perform(function(_, err, res)
-      self._active_jobs = self._active_jobs - 1
 
-      assert(self._active_jobs >= 0)
-      self._ee:off(job.jid)
-
-      if not job.state_changed then
-        if err then job:fail(err, msg)
-        else job:complete() end
-      end
-
-      local n = self._reserver:progressed() + self._active_jobs
-      if n < self._max_jobs then
-        self._fetch_timer:stop()
-        return self._reserver:reserve(on_reserve)
-      end
-    end, self._ee)
+    job:perform(on_perform, self._ee)
 
     local n = self._reserver:progressed() + self._active_jobs
     if n < self._max_jobs then

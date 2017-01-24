@@ -45,7 +45,6 @@ end
 assert(getpid, 'can not find getpid implementation. Try install lua-posix library for *nix or lua-pdh for Windwos')
 end
 
-
 local _hostname
 local function gethostname()
   if not _hostname then
@@ -127,6 +126,19 @@ local function reconnect_redis(cnn, interval, on_connect, on_disconnect)
   return timer
 end
 
+local DummyLogger = {} do
+  local lvl = {'emerg','alert','fatal','error','warning','notice','info','debug','trace'}
+  for _, l in ipairs(lvl) do
+    DummyLogger[l] = dummy;
+    DummyLogger[l..'_dump'] = dummy;
+  end
+
+  local api = {'writer', 'formatter', 'format', 'lvl', 'set_lvl', 'set_writer', 'set_formatter', 'set_format'}
+  for _, meth in ipairs(api) do
+    DummyLogger[meth] = dummy
+  end
+end
+
 Utils = {
   now             = now;
   getpid          = getpid;
@@ -139,6 +151,7 @@ Utils = {
   is_callable     = is_callable;
   json            = json;
   reconnect_redis = reconnect_redis;
+  dummy_logger    = DummyLogger;
 }
 
 end
