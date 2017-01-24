@@ -4,13 +4,12 @@ Lua Bindings for qless
 ### Usage
 
 #### Test job
-
 ```Lua
 -- this is separate Lua module which export `perform` function
 -- This function accept 2 args
 -- 1 - QLessJob object
 -- 2 - `done` callback. Function have to call this function 
---      when job done or fail.
+--      when job complete or fail.
 local uv = require "lluv"
 
 local function perform(job, done)
@@ -25,11 +24,12 @@ local function perform(job, done)
 
     if i == 0 then
       self:close()
+      -- can just pass `done` as callback
       return job:complete(done)
     end
   end)
 
-  -- to handle messages form server we can EventEmiter API
+  -- to handle messages form server we can use EventEmiter API
   job:onAny(function(self, event, data)
     if event == 'lock_lost' then
       timer:close()
@@ -45,7 +45,7 @@ return {
 ```
 
 #### Worker
-```
+```Lua
 local uv                = require 'lluv'
 local QLessWorkerSerial = require 'qless.worker.serial'
 
@@ -61,7 +61,7 @@ uv.run()
 ```
 
 #### Client
-```
+```Lua
 local QLess = require 'qless'
 
 local qless = QLess.new()
