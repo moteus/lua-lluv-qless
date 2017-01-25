@@ -32,6 +32,7 @@ function QLessWorkerSerial:__init(options)
   self._max_jobs      = options.concurent or DEFAULT.concurent
   self._poll_interval = options.interval  or DEFAULT.interval
   self._active_jobs   = 0
+  self._paused        = false
 
   local ev = 'w:' .. self._client.worker_name
 
@@ -77,10 +78,12 @@ function QLessWorkerSerial:run()
       else job:complete() end
     end
 
-    local n = self._reserver:progressed() + self._active_jobs
-    if n < self._max_jobs then
-      self._fetch_timer:stop()
-      return self._reserver:reserve(on_reserve)
+    if not self._paused then
+      local n = self._reserver:progressed() + self._active_jobs
+      if n < self._max_jobs then
+        self._fetch_timer:stop()
+        return self._reserver:reserve(on_reserve)
+      end
     end
   end
 
@@ -94,7 +97,7 @@ function QLessWorkerSerial:run()
         self._client.logger.error('%s: error reserving job: %s', tostring(self), tostring(err))
       end
 
-      if reserver:progressed() == 0 then
+      if (not self._paused) and (reserver:progressed() == 0) then
         self._fetch_timer:again(self._poll_interval)
       end
       return
@@ -110,9 +113,11 @@ function QLessWorkerSerial:run()
 
     job:perform(on_perform, self._ee)
 
-    local n = reserver:progressed() + self._active_jobs
-    if n < self._max_jobs then
-      return reserver:reserve(on_reserve)
+    if not self._paused then
+      local n = reserver:progressed() + self._active_jobs
+      if n < self._max_jobs then
+        return reserver:reserve(on_reserve)
+      end
     end
 
     -- we do not need restart timer here
@@ -127,7 +132,21 @@ function QLessWorkerSerial:run()
 
 end
 
+function QLessWorkerSerial:pause()
+  self._fetch_timer:stop()
+  self._paused = true;
 end
+
+function QLessWorkerSerial:unpause()
+  self._paused = false;
+  local n = self._reserver:progressed() + self._active_jobs
+  if n < self._max_jobs then
+    self._fetch_timer:again(self._poll_interval)
+  end
+end
+
+end
+
 -------------------------------------------------------------------------------
 
 return QLessWorkerSerial
