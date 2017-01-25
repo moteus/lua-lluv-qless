@@ -117,6 +117,14 @@ function QLessEvents:off(event, cb)
   return self._ee:off(ql_ns .. event, cb)
 end
 
+function QLessEvents:close(cb)
+  self._reconnect_redis:close(function()
+    self._redis:close(function(_, ...)
+      if cb then cb(self, ...) end
+    end)
+  end)
+end
+
 end
 -------------------------------------------------------------------------------
 

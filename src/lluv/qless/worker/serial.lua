@@ -78,12 +78,19 @@ function QLessWorkerSerial:run()
       else job:complete() end
     end
 
-    if not self._paused then
+    if self:continuing() then
       local n = self._reserver:progressed() + self._active_jobs
       if n < self._max_jobs then
         self._fetch_timer:stop()
-        return self._reserver:reserve(on_reserve)
+        self._reserver:reserve(on_reserve)
       end
+      return
+    end
+
+    if self._shutdown then
+      local n = self._reserver:progressed() + self._active_jobs
+      if n == 0 then self:_do_shutdown() end
+      return
     end
   end
 
@@ -91,13 +98,21 @@ function QLessWorkerSerial:run()
     assert(not self._fetch_timer:active())
     assert(self._active_jobs < self._max_jobs)
 
+    if self._shutdown then
+      if job then job:retry() end
+
+      local n = self._reserver:progressed() + self._active_jobs
+      if n == 0 then self:_do_shutdown() end
+      return
+    end
+
     -- we try all active queues or get error
     if not job then
       if err then
         self._client.logger.error('%s: error reserving job: %s', tostring(self), tostring(err))
       end
 
-      if (not self._paused) and (reserver:progressed() == 0) then
+      if self:continuing() and (reserver:progressed() == 0) then
         self._fetch_timer:again(self._poll_interval)
       end
       return
@@ -113,7 +128,7 @@ function QLessWorkerSerial:run()
 
     job:perform(on_perform, self._ee)
 
-    if not self._paused then
+    if self:continuing() then
       local n = reserver:progressed() + self._active_jobs
       if n < self._max_jobs then
         return reserver:reserve(on_reserve)
@@ -139,10 +154,28 @@ end
 
 function QLessWorkerSerial:unpause()
   self._paused = false;
-  local n = self._reserver:progressed() + self._active_jobs
-  if n < self._max_jobs then
-    self._fetch_timer:again(self._poll_interval)
+  if not self._shutdown then
+    local n = self._reserver:progressed() + self._active_jobs
+    if n < self._max_jobs then
+      self._fetch_timer:again(self._poll_interval)
+    end
   end
+end
+
+function QLessWorkerSerial:shutdown()
+  self._fetch_timer:stop()
+  self._shutdown = true
+  local n = self._reserver:progressed() + self._active_jobs
+  if n == 0 then self:_do_shutdown() end
+end
+
+function QLessWorkerSerial:_do_shutdown()
+  self._events:close()
+  self._client:close()
+end
+
+function QLessWorkerSerial:continuing()
+  return not (self._shutdown or self._paused)
 end
 
 end

@@ -145,7 +145,7 @@ end
 function QLessClient:close(cb)
   self._reconnect_redis:close(function()
     self._redis:close(function(_, ...)
-      cb(self, ...)
+      if cb then cb(self, ...) end
     end)
   end)
 end
