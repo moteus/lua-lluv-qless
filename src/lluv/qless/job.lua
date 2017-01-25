@@ -2,6 +2,7 @@ local uv           = require "lluv"
 local ut           = require "lluv.utils"
 local Utils        = require "qless.utils"
 local BaseClass    = require "qless.base"
+local QLessError   = require "qless.error"
 local EventEmitter = require "EventEmitter"
 
 local unpack = unpack or table.unpack
@@ -116,25 +117,34 @@ function QLessJob:set_priority(v, cb)
   end)
 end
 
+local function once(fn)
+  local called = false
+  return function(...)
+    if called then return end
+    called = true
+    return fn(...)
+  end
+end
+
 function QLessJob:perform(cb, ...)
   local ok, task = pcall(require, self.klass_prefix .. self.klass)
   if not ok then
-    return uv.defer(cb, self,
-      string.format("[%s] %s (-1)",
-        self.queue_name .. "-invalid-task",
-        "Module '" .. tostring(self.klass) .. "' could not be found"
-      )
+    local err = QLessError.General.new('invalid-task', 
+      "Module '" .. tostring(self.klass) .. "' could not be found",
+      self.queue_name
     )
+    return uv.defer(cb, self, err)
   end
 
   if (type(task) ~= 'table') or not is_callable(task.perform) then
-    return uv.defer(cb, self,
-      string.format("[%s] %s (-1)",
-        self.queue_name .. "-invalid-task",
-        "Module '" .. self.klass .. "' has no perform function"
-      )
+    local err = QLessError.General.new('invalid-task', 
+      "Module '" .. self.klass .. "' has no perform function",
+      self.queue_name
     )
+    return uv.defer(cb, self, err)
   end
+
+  cb = once(cb)
 
   local ok, err = pcall(task.perform, self, function(...)
     -- `cb` can be called like `job:complete(cb)/job:fail(..., cb)`
@@ -145,12 +155,11 @@ function QLessJob:perform(cb, ...)
   end, ...)
 
   if not ok then
-    return uv.defer(cb, self,
-      string.format("[%s] %s (-1)",
-        "failed-" .. self.queue_name,
-        "'" .. self.klass .. "' " .. (err or "")
-      )
+    local err = QLessError.General.new('failed', 
+      "'" .. self.klass .. "' " .. (err or ""),
+      self.queue_name
     )
+    return uv.defer(cb, self, err)
   end
 end
 

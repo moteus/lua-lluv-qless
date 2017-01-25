@@ -99,13 +99,23 @@ function QLessWorkerSerial:run()
     lock_lost_jobs[job.jid] = nil
 
     if not (lock_lost or job.state_changed) then
+      print(job.jid, 'done', err, ';', res)
       if err then
         --! @todo better formatting group/error message
         if (type(err) == 'table') and err.cat then
-          err = job.klass .. ":" .. err:cat() .. ":" .. err:name()
           res = tostring(err)
+          err = job.klass .. ":" .. err:cat() .. ":" .. err:name()
         end
+
         job:fail(err, res, on_fail)
+
+        -- we do this in case job raise Lua error but did not call
+        -- `done` callback. So job:perform calls this callback, but
+        -- there may be still pending IO operations
+        job:emit('error', {
+          group   = err;
+          message = res;
+        })
       else job:complete(on_complite) end
     end
 

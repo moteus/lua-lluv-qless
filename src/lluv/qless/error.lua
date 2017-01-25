@@ -7,8 +7,8 @@ end
 -------------------------------------------------------------------------------
 local QLessError = ut.class() do
 
-function QLessError:__init(msg, ext, name, no)
-  self._name = name or 'Custom'
+function QLessError:__init(name, msg, ext, no)
+  self._name = name or 'user'
   self._no   = no or -1
   self._msg  = msg
   self._ext  = ext
@@ -70,7 +70,7 @@ function QLessLuaScriptError.match(s)
 end
 
 function QLessLuaScriptError:__init(msg, ext)
-  return super(self, '__init', msg, ext, 'LuaScript', -1)
+  return super(self, '__init', 'LuaScript', msg, ext, -1)
 end
 
 function QLessLuaScriptError:__tostring()
@@ -90,7 +90,7 @@ local QLessLockLostError = ut.class(QLessError) do
 local single
 
 function QLessLockLostError:__init(jid)
-  return super(self, '__init', 'Lost lock for job', jid 'LockLost', -1)
+  return super(self, '__init', 'LockLost', 'Lost lock for job', jid, -1)
 end
 
 function QLessLockLostError:__tostring()
@@ -110,6 +110,7 @@ end
 
 return {
   is        = is;
+  General   = QLessError;
   LuaScript = QLessLuaScriptError;
   LockLost  = QLessLockLostError;
 }
