@@ -65,12 +65,11 @@ end
 function QLessEvents:subscribe(events, cb)
   cb = cb or dummy
 
-  local n = 0
+  local n, closed = 0, self._redis:closed()
   for _, event in ipairs(events) do
     if not self._events[event] then
       self._events[event] = true
-      --! @fixme do not use private field
-      if self._redis._cnn then
+      if not closed then
         n = n + 1
         self._redis:subscribe(ql_ns .. event, function(_, err, res)
           n = n - 1
@@ -85,13 +84,21 @@ function QLessEvents:subscribe(events, cb)
     end
   end
 
+  if closed then
+    return uv.defer(cb, self, self._last_redis_error or ENOTCONN)
+  end
+
   if n == 0 then
-    uv.defer(cb, self, nil, 0)
+    return uv.defer(cb, self, nil, 0)
   end
 end
 
 function QLessEvents:unsubscribe(cb)
-    return self.redis:unsubscribe(cb)
+  if self._redis:closed() then
+    return uv.defer(cb, self, self._last_redis_error or err)
+  end
+
+  return self._redis:unsubscribe(cb)
 end
 
 function QLessEvents:on(event, cb)

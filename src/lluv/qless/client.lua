@@ -119,7 +119,7 @@ function QLessClient:__init(options)
   self.workers      = QLessWorkers.new(self)
   self.worker_name  = options.worker_name or string.format("%s-%d", gethostname(), getpid())
 
-  self._last_redis_error = ENOTCONN
+  self._last_redis_error = nil
 
   --! @fixme use configuriable reconnect interval
   self._reconnect_redis  = reconnect_redis(self._redis, 5000, function()
@@ -181,9 +181,9 @@ function QLessClient:events()
 end
 
 function QLessClient:_call(_self, command, ...)
-  if self._last_redis_error then
+  if self._redis:closed() then
     local _, cb = pack_args(...)
-    return uv.defer(cb, _self, self._last_redis_error)
+    return uv.defer(cb, _self, self._last_redis_error or ENOTCONN)
   end
   return self._script:call(_self, command, now(), ...)
 end
