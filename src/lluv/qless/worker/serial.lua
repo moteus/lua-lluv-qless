@@ -4,6 +4,7 @@ local EventEmitter         = require "EventEmitter"
 local Utils                = require "qless.utils"
 local BaseClass            = require "qless.base"
 local QLessClient          = require "qless.client"
+local QLessError           = require "qless.error"
 
 local json = Utils.json
 
@@ -74,15 +75,38 @@ function QLessWorkerSerial:run()
 
   local on_perform, on_reserve
 
+  local lock_lost_jobs = {}
+
+  local on_fail = function(job, err, res)
+    if err then
+      job.client.logger.warning("failed to fail %s: %s", job.jid, tostring(err))
+    end
+  end
+
+  local on_complite = function(job, err, res)
+    if err then
+      job.client.logger.warning("failed to complete %s: %s", job.jid, tostring(err))
+    end
+  end
+
   on_perform = function(job, err, res)
     self._active_jobs = self._active_jobs - 1
 
+    local lock_lost = lock_lost_jobs[job.jid]
+
     assert(self._active_jobs >= 0)
     self._ee:off(job.jid)
+    lock_lost_jobs[job.jid] = nil
 
-    if not job.state_changed then
-      if err then job:fail(err, res)
-      else job:complete() end
+    if not (lock_lost or job.state_changed) then
+      if err then
+        --! @todo better formatting group/error message
+        if (type(err) == 'table') and err.cat then
+          err = job.klass .. ":" .. err:cat() .. ":" .. err:name()
+          res = tostring(err)
+        end
+        job:fail(err, res, on_fail)
+      else job:complete(on_complite) end
     end
 
     if self:continuing() then
@@ -130,6 +154,9 @@ function QLessWorkerSerial:run()
     self._active_jobs = self._active_jobs + 1
 
     self._ee:on(job.jid, function(_, jid, data)
+      if data.event == 'lock_lost' then
+        lock_lost_jobs[jid] = true
+      end
       job:emit(data.event, data)
     end)
 
