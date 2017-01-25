@@ -65,13 +65,13 @@ end
 
 function QLessJobs:failed(...)
   local args, cb = pack_args(...)
-  local tag, offset, count = unpack(args)
+  local group, offset, count = unpack(args)
 
-  if not tag then
+  if not group then
     return self._client:_call(self, "failed", cb)
   end
 
-  self._client:_call(self, "failed", tag,
+  self._client:_call(self, "failed", group,
     offset or DEFAULT_OFFSET,
     count  or DEFAULT_COUNT,
     function(self, err, res)
@@ -79,11 +79,12 @@ function QLessJobs:failed(...)
       res = json.decode(res)
 
       if res.jobs and #res.jobs > 0 then
-        res.jobs[#res.jobs + 1] = function(self, err, jobs)
+        local on_multiget = function(self, err, jobs)
           if err then return cb(self, err, jobs) end
           res.jobs = jobs
           cb(self, err, res)
         end
+        res.jobs[#res.jobs + 1] = on_multiget
         return self:multiget(unpack(#res.jobs))
       end
 

@@ -84,7 +84,7 @@ function QLessWorkerSerial:run()
     end
   end
 
-  on_reserve = function(_, err, job)
+  on_reserve = function(reserver, err, job)
     assert(not self._fetch_timer:active())
     assert(self._active_jobs < self._max_jobs)
 
@@ -94,7 +94,7 @@ function QLessWorkerSerial:run()
         self._client.logger.error('%s: error reserving job: %s', tostring(self), tostring(err))
       end
 
-      if self._reserver:progressed() == 0 then
+      if reserver:progressed() == 0 then
         self._fetch_timer:again(self._poll_interval)
       end
       return
@@ -110,9 +110,9 @@ function QLessWorkerSerial:run()
 
     job:perform(on_perform, self._ee)
 
-    local n = self._reserver:progressed() + self._active_jobs
+    local n = reserver:progressed() + self._active_jobs
     if n < self._max_jobs then
-      return self._reserver:reserve(on_reserve)
+      return reserver:reserve(on_reserve)
     end
 
     -- we do not need restart timer here
