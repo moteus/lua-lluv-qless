@@ -1,5 +1,6 @@
 # lua-lluv-qless
-Lua Bindings for qless
+
+##Lua Bindings for [qless](https://github.com/seomoz/qless-core)
 
 ### Usage
 
