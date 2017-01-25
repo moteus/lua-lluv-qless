@@ -7,6 +7,13 @@ local QLessClient          = require "qless.client"
 
 local json = Utils.json
 
+--! @todo handle signals
+--  TERM, INT => terminate process
+--  HUP  => custom handler from settings
+--  QUIT => worker.shutdown
+--  CONT => worker.unpause
+--  USR2 => worker.pause
+
 -------------------------------------------------------------------------------
 local QLessWorkerSerial = ut.class(BaseClass) do
 
@@ -89,7 +96,7 @@ function QLessWorkerSerial:run()
 
     if self._shutdown then
       local n = self._reserver:progressed() + self._active_jobs
-      if n == 0 then self:_do_shutdown() end
+      if n == 0 then self:close() end
       return
     end
   end
@@ -102,7 +109,7 @@ function QLessWorkerSerial:run()
       if job then job:retry() end
 
       local n = self._reserver:progressed() + self._active_jobs
-      if n == 0 then self:_do_shutdown() end
+      if n == 0 then self:close() end
       return
     end
 
@@ -166,20 +173,27 @@ function QLessWorkerSerial:shutdown()
   self._fetch_timer:stop()
   self._shutdown = true
   local n = self._reserver:progressed() + self._active_jobs
-  if n == 0 then self:_do_shutdown() end
+  if n == 0 then self:close() end
 end
 
-function QLessWorkerSerial:_do_shutdown()
+function QLessWorkerSerial:close(cb)
   self._events:close()
-  self._client:close()
+  self:deregister(function()
+    self._client:close(cb)
+  end)
 end
 
 function QLessWorkerSerial:continuing()
   return not (self._shutdown or self._paused)
 end
 
+function QLessWorkerSerial:deregister(cb)
+  self._client:deregister_workers({self._client.worker_name}, function(_, ...)
+    if cb then return cb(self, ...) end
+  end)
 end
 
+end
 -------------------------------------------------------------------------------
 
 return QLessWorkerSerial
