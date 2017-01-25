@@ -1,3 +1,4 @@
+local uv            = require "lluv"
 local ut            = require "lluv.utils"
 local Utils         = require "qless.utils"
 local BaseClass     = require "qless.base"
@@ -6,6 +7,8 @@ local EventEmitter  = require "EventEmitter"
 local dummy, is_callable = Utils.dummy, Utils.is_callable
 
 local reconnect_redis = Utils.reconnect_redis
+
+local ENOTCONN = uv.error('LIBUV', uv.ENOTCONN)
 
 -------------------------------------------------------------------------------
 -- Events, to be accessed via qless.events etc.
@@ -25,6 +28,8 @@ function QLessEvents:__init(client)
     channel = string.sub(channel, #ql_ns + 1)
     self._ee:emit(channel, ...)
   end)
+
+  self._last_redis_error = ENOTCONN
 
   self._reconnect_redis = reconnect_redis(self._redis, 5000, function()
     self._client.logger.info('%s: connected to redis server', tostring(self))
@@ -46,6 +51,8 @@ function QLessEvents:__init(client)
     else
       self._client.logger.info('%s: disconnected from redis server', tostring(self))
     end
+
+    self._last_redis_error = err or ENOTCONN
   end)
 
   return self

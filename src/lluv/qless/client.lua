@@ -19,6 +19,7 @@ local json, now, generate_jid, pass_self, pack_args, dummy, gethostname, getpid 
 
 local reconnect_redis, dummy_logger = Utils.reconnect_redis, Utils.dummy_logger
 
+local ENOTCONN = uv.error('LIBUV', uv.ENOTCONN)
 -------------------------------------------------------------------------------
 -- Queues, to be accessed via qless.queues etc.
 local QLessQueues = ut.class(BaseClass) do
@@ -116,9 +117,9 @@ function QLessClient:__init(options)
   self.queues       = QLessQueues.new(self)
   self.jobs         = QLessJobs.new(self)
   self.workers      = QLessWorkers.new(self)
-  self.worker_name  = string.format("%s-%d", gethostname(), getpid())
+  self.worker_name  = options.worker_name or string.format("%s-%d", gethostname(), getpid())
 
-  self._last_redis_error = nil
+  self._last_redis_error = ENOTCONN
 
   --! @fixme use configuriable reconnect interval
   self._reconnect_redis  = reconnect_redis(self._redis, 5000, function()
@@ -131,7 +132,7 @@ function QLessClient:__init(options)
       self.logger.info('%s: disconnected from redis server', tostring(self))
     end
 
-    self._last_redis_error = err
+    self._last_redis_error = err or ENOTCONN
   end)
 
   return self

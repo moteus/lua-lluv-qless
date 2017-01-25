@@ -119,6 +119,9 @@ local function reconnect_redis(cnn, interval, on_connect, on_disconnect)
     end
   end
 
+  -- so we can pass first connect error
+  connected = true
+
   cnn:open(error_handler)
 
   cnn:on_error(error_handler)
