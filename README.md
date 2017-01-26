@@ -30,12 +30,13 @@ local function perform(job, done)
     end
   end)
 
-  -- to handle messages form server we can use EventEmiter API
-  job:onAny(function(self, event, data)
-    if event == 'lock_lost' then
-      timer:close()
-      job:complete(done)
-    end
+  -- to handle messages form server we can use EventEmitter API
+  job:on('lock_lost', function(self, event, data)
+    timer:close()
+    -- we do not need call `job:complete`/`job:fail` so just call `done`
+    -- we have not pass any error because worker class already know
+    -- that this job lost its lock so it just ignore any error.
+    done()
   end)
 
 end

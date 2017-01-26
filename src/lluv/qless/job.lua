@@ -350,21 +350,17 @@ function QLessJob:log(message, ...)
 end
 
 function QLessJob:begin_state_change(event)
-  local before = self["before_" .. event]
-  if before and type(before) == "function" then
-    before()
-  end
+  self:emit('before.' .. event)
 end
 
 function QLessJob:finish_state_change(event, err)
-  if not err then
+  -- if we reach to server and it return error than we can assume than
+  -- state is canged. E.g. we lost lock but notify lost.
+  if (not err) or (QLessError.is(QLessError.LuaScript, err)) then
     self.state_changed = true
   end
 
-  local after = self["after_" .. event]
-  if after and type(after) == "function" then
-    after(err)
-  end
+  self:emit('after.' .. event)
 end
 
 function QLessJob:emit(...)
