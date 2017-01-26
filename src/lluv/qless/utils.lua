@@ -142,7 +142,12 @@ local DummyLogger = {} do
   end
 end
 
+local function super(self, m, ...)
+  return self.__base[m](self, ...)
+end
+
 Utils = {
+  super           = super;
   now             = now;
   getpid          = getpid;
   gethostname     = gethostname;

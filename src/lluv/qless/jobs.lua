@@ -26,6 +26,22 @@ function QLessJobs:__tostring()
   return self.__base.__tostring(self, "QLess::Jobs")
 end
 
+local function fetch_jobs(self, err, res, cb)
+  if not cb then return end
+
+  if res and res.jobs and #res.jobs > 0 then
+    local on_multiget = function(self, err, jobs)
+      if err then return cb(self, err, jobs) end
+      res.jobs = jobs
+      cb(self, err, res)
+    end
+    res.jobs[#res.jobs + 1] = on_multiget
+    return self:multiget(unpack(res.jobs))
+  end
+
+  return cb(self, err, res)
+end
+
 function QLessJobs:complete(...)
   local args, cb = pack_args(...)
   return self._client:_call(self, "jobs", "complete",
@@ -37,8 +53,10 @@ end
 
 function QLessJobs:tracked(cb)
   local res = self._client:_call(self, "track", function(self, err, res)
+    if not cb then return end
+
     if err then return cb(self, err, res) end
-    res = json.decode(res)
+    if res and not err then res = json.decode(res) end
 
     local tracked_jobs = {}
     for k,v in pairs(res.jobs) do
@@ -46,7 +64,7 @@ function QLessJobs:tracked(cb)
     end
     res.jobs = tracked_jobs
 
-    cb(self, nil, res)
+    return cb(self, err, res)
   end)
 end
 
@@ -58,7 +76,7 @@ function QLessJobs:tagged(...)
     args[3] or DEFAULT_COUNT,
     function(self, err, res)
       if res and not err then res = json.decode(res) end
-      return cb(self, err, res)
+      return fetch_jobs(self, err, res, cb)
     end
   )
 end
@@ -68,27 +86,20 @@ function QLessJobs:failed(...)
   local group, offset, count = unpack(args)
 
   if not group then
-    return self._client:_call(self, "failed", cb)
+    return self._client:_call(self, "failed", function(self, err, res)
+      if res and not err then res = json.decode(res) end
+
+      return cb(self, err, res)
+    end)
   end
 
-  self._client:_call(self, "failed", group,
+  return self._client:_call(self, "failed", group,
     offset or DEFAULT_OFFSET,
     count  or DEFAULT_COUNT,
     function(self, err, res)
-      if err then return cb(self, err, res) end
-      res = json.decode(res)
+      if res and not err then res = json.decode(res) end
 
-      if res.jobs and #res.jobs > 0 then
-        local on_multiget = function(self, err, jobs)
-          if err then return cb(self, err, jobs) end
-          res.jobs = jobs
-          cb(self, err, res)
-        end
-        res.jobs[#res.jobs + 1] = on_multiget
-        return self:multiget(unpack(#res.jobs))
-      end
-
-      return cb(self, err, res)
+      return fetch_jobs(self, err, res, cb)
     end
   )
 end
@@ -128,7 +139,7 @@ function QLessJobs:multiget(...)
     cb(self, err, jobs)
   end
 
-  local res = self.client:_call(self, "multiget", unpack(args))
+  local res = self._client:_call(self, "multiget", unpack(args))
 end
 
 end

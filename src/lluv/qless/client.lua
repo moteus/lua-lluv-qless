@@ -210,6 +210,16 @@ function QLessClient:tags(...)
   end)
 end
 
+function QLessClient:unfail(queue, group, ...)
+  local args, cb, count = pack_args(...)
+  count = args[1] or 25
+
+  return self:call("unfail", queue, group, count, function(self, err, res)
+    if res and not err then res = json.decode(res) end
+    if cb then cb(self, err, res) end
+  end)
+end
+
 function QLessClient:deregister_workers(worker_names, cb)
   local n = #worker_names + 1
 

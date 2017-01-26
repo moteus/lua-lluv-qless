@@ -129,6 +129,14 @@ function QLessQueue:unpause(cb)
   return self.client:_call(self, "unpause", self.name, cb or dummy)
 end
 
+function QLessQueue:unfail(group, ...)
+  local count, cb = ...
+  if is_callable(count) then count, cb = nil, options end
+  if not count then count = 25 end
+
+  return self.client:_call(self, "unfail", self.name, group, count, cb or dummy)
+end
+
 function QLessQueue:put(klass, data, ...)
   local options, cb = ...
   if is_callable(options) then options, cb = nil, options end
