@@ -349,14 +349,7 @@ describe('QLess test', function()
   after_each(function(done) async()
     if client then
       client:close(function()
-        uv.handles(function(handle)
-          if not(handle:closed() or handle:closing()) then
-            if handle:active() and handle:has_ref() then
-              assert.truthy(false, 'Test leave active handle:' .. tostring(handle))
-            end
-            return handle:close()
-          end
-        end)
+        loop.verify_after()
         done()
       end)
       redis, client = nil
