@@ -52,11 +52,8 @@ function QLessJobs:complete(...)
 end
 
 function QLessJobs:tracked(cb)
-  local res = self._client:_call(self, "track", function(self, err, res)
+  local res = self._client:_call_json(self, "track", function(self, err, res)
     if not cb then return end
-
-    if err then return cb(self, err, res) end
-    if res and not err then res = json.decode(res) end
 
     local tracked_jobs = {}
     for k,v in pairs(res.jobs) do
@@ -70,12 +67,11 @@ end
 
 function QLessJobs:tagged(...)
   local args, cb = pack_args(...)
-  return self._client:_call(self, "tag", "get",
+  return self._client:_call_json(self, "tag", "get",
     assert(args[1], 'no tag argument'),
     args[2] or DEFAULT_OFFSET,
     args[3] or DEFAULT_COUNT,
     function(self, err, res)
-      if res and not err then res = json.decode(res) end
       return fetch_jobs(self, err, res, cb)
     end
   )
@@ -86,19 +82,15 @@ function QLessJobs:failed(...)
   local group, offset, count = unpack(args)
 
   if not group then
-    return self._client:_call(self, "failed", function(self, err, res)
-      if res and not err then res = json.decode(res) end
-
+    return self._client:_call_json(self, "failed", function(self, err, res)
       return cb(self, err, res)
     end)
   end
 
-  return self._client:_call(self, "failed", group,
+  return self._client:_call_json(self, "failed", group,
     offset or DEFAULT_OFFSET,
     count  or DEFAULT_COUNT,
     function(self, err, res)
-      if res and not err then res = json.decode(res) end
-
       return fetch_jobs(self, err, res, cb)
     end
   )
@@ -107,17 +99,16 @@ end
 function QLessJobs:get(jid, cb)
   cb = cb or dummy
 
-  self._client:_call(self, "get", jid, function(self, err, res)
+  self._client:_call_json(self, "get", jid, function(self, err, res)
     if err then return cb(self, err, res) end
+
     if res then
-      res = json.decode(res)
       res = QLessJob.new(self._client, res)
       return cb(self, err, res)
     end
 
-    self._client:_call(self, "recur.get", jid, function(self, err, res)
+    self._client:_call_json(self, "recur.get", jid, function(self, err, res)
       if res and not err then
-        res = json.decode(res)
         res = QLessRecurJob.new(self._client, res)
       end
       return cb(self, err, res)

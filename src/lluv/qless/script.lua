@@ -5,7 +5,7 @@ local QLessError   = require "lluv.qless.error"
 local debug        = require "debug"
 
 local unpack = unpack or table.unpack
-local pack_args, read_sha1_file = Utils.pack_args, Utils.read_sha1_file
+local json, pack_args, read_sha1_file = Utils.json, Utils.pack_args, Utils.read_sha1_file
 
 local QLESS_LUA_PATH do
   local sep = package.config:sub(1, 1)
@@ -57,20 +57,25 @@ function QLessLuaScript:_call_again(_self, cb, args)
   self._redis:evalsha(self._sha, "0", unpack(args))
 end
 
-local function check_error(cb)
+local function check_error(is_json, cb)
   return function(self, err, ...)
     if err then
       if err:cat() == 'REDIS' and err:name() == 'ERR' then
         err = QLessError.LuaScript.match(err:msg()) or err
       end
     end
+
+    if is_json and ... and not err then
+      return cb(self, err, json.decode((...)))
+    end
+
     return cb(self, err, ...)
   end
 end
 
-function QLessLuaScript:call(_self, ...)
+function QLessLuaScript:_call(is_json, _self, ...)
   local args, cb, n = pack_args(...)
-  cb = check_error(cb)
+  cb = check_error(is_json, cb)
 
   for i = 1, n do
     assert(args[i] ~= nil)
@@ -92,6 +97,14 @@ function QLessLuaScript:call(_self, ...)
   end
 
   self._redis:evalsha(self._sha, "0", unpack(args))
+end
+
+function QLessLuaScript:call(...)
+  return self:_call(false, ...)
+end
+
+function QLessLuaScript:call_json(...)
+  return self:_call(true, ...)
 end
 
 end

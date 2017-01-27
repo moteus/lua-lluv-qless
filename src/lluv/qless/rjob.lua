@@ -98,11 +98,31 @@ function QLessRecurJob:cancel(cb)
 end
 
 function QLessRecurJob:tag(...)
-  self.client:_call(self, "recur.tag", self.jid, ...)
+  local args, cb, n = pack_args(...)
+  args[n+1] = function(self, err, res)
+    if res and not err then
+      for k, v in pairs(res) do self.tags[k] = v end
+      for k in pairs(self.tags) do
+        if res[k] == nil then self.tags[k] = nil end
+      end
+    end
+    return cb(self, err, res)
+  end
+  return self.client:_call_json(self, "recur.tag", self.jid, unpack(args))
 end
 
 function QLessRecurJob:untag(...)
-  self.client:_call(self, "recur.untag", self.jid, ...)
+  local args, cb, n = pack_args(...)
+  args[n+1] = function(self, err, res)
+    if res and not err then
+      for k, v in pairs(res) do self.tags[k] = v end
+      for k in pairs(self.tags) do
+        if res[k] == nil then self.tags[k] = nil end
+      end
+    end
+    return cb(self, err, res)
+  end
+  return self.client:_call_json(self, "recur.untag", self.jid, unpack(args))
 end
 
 end

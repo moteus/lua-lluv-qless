@@ -32,10 +32,7 @@ function QLessConfig:unset(k, cb)
 end
 
 function QLessConfig:all(cb)
-  self._client:call("config.get", function(self, err, res)
-    if res and not err then res = json.decode(res) end
-    if cb then cb(self, err, res) end
-  end)
+  self._client:call_json("config.get", cb)
 end
 
 function QLessConfig:clear(cb)

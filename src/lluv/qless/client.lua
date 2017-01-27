@@ -48,10 +48,7 @@ function QLessQueues:queue(name)
 end
 
 function QLessQueues:counts(cb)
-  return self._client:_call(self, 'queues', function(self, err, res)
-    if res and not err then res = json.decode(res) end
-    if cb then cb(self, err, res) end
-  end)
+  return self._client:_call_json(self, 'queues', cb)
 end
 
 end
@@ -74,21 +71,15 @@ function QLessWorkers:__tostring()
 end
 
 function QLessWorkers:_get(_self, name, cb)
-  return self._client:_call(_self, 'workers', name, function(self, err, res)
-    if res and not err then res = json.decode(res) end
-    if cb then cb(self, err, res) end
-  end)
+  return self._client:_call_json(_self, 'workers', name, cb)
 end
 
 function QLessWorkers:worker(name, cb)
   return self:_get(self, name, cb)
 end
 
-function QLessWorkers:counts(cb)
-  return self._client:_call(self, 'workers', function(self, err, res)
-    if res and not err then res = json.decode(res) end
-    if cb then cb(self, err, res) end
-  end)
+function QLessWorkers:counts(...)
+  return self._client:_call_json(self, 'workers', ...)
 end
 
 end
@@ -202,8 +193,20 @@ function QLessClient:_call(_self, command, ...)
   return self._script:call(_self, command, now(), ...)
 end
 
+function QLessClient:_call_json(_self, command, ...)
+  if self._redis:closed() then
+    local _, cb = pack_args(...)
+    return uv.defer(cb, _self, self._last_redis_error or ENOTCONN)
+  end
+  return self._script:call_json(_self, command, now(), ...)
+end
+
 function QLessClient:call(...)
   return self:_call(self, ...)
+end
+
+function QLessClient:call_json(...)
+  return self:_call_json(self, ...)
 end
 
 function QLessClient:track(jid, cb)
@@ -218,20 +221,14 @@ function QLessClient:tags(...)
   local args, cb, offset, count = pack_args(...)
   offset, count = args[1] or 0, args[2] or 100
 
-  return self:call("tag", "top", offset, count, function(self, err, res)
-    if res and not err then res = json.decode(res) end
-    if cb then cb(self, err, res) end
-  end)
+  return self:call_json("tag", "top", offset, count, cb)
 end
 
 function QLessClient:unfail(queue, group, ...)
   local args, cb, count = pack_args(...)
   count = args[1] or 25
 
-  return self:call("unfail", queue, group, count, function(self, err, res)
-    if res and not err then res = json.decode(res) end
-    if cb then cb(self, err, res) end
-  end)
+  return self:call_json("unfail", queue, group, count, cb)
 end
 
 function QLessClient:deregister_workers(worker_names, cb)

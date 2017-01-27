@@ -110,7 +110,6 @@ end
 
 function QLessJob:set_priority(v, cb)
   assert(tonumber(v))
-
   self.client:_call(self, 'priority', self.jid, v, function(self, err, res)
     if not err then self._priority = v end
     if cb then return cb(self, err, res) end
@@ -322,11 +321,31 @@ function QLessJob:untrack(cb)
 end
 
 function QLessJob:tag(...)
-  return self.client:_call(self, "tag", "add", self.jid, ...)
+  local args, cb, n = pack_args(...)
+  args[n+1] = function(self, err, res)
+    if res and not err then
+      for k, v in pairs(res) do self.tags[k] = v end
+      for k in pairs(self.tags) do
+        if res[k] == nil then self.tags[k] = nil end
+      end
+    end
+    return cb(self, err, res)
+  end
+  return self.client:_call_json(self, "tag", "add", self.jid, unpack(args))
 end
 
 function QLessJob:untag(...)
-  return self.client:_call(self, "tag", "remove", self.jid, ...)
+  local args, cb, n = pack_args(...)
+  args[n+1] = function(self, err, res)
+    if res and not err then
+      for k, v in pairs(res) do self.tags[k] = v end
+      for k in pairs(self.tags) do
+        if res[k] == nil then self.tags[k] = nil end
+      end
+    end
+    return cb(self, err, res)
+  end
+  return self.client:_call_json(self, "tag", "remove", self.jid, unpack(args))
 end
 
 function QLessJob:depend(...)

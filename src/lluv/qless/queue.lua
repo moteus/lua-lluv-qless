@@ -79,10 +79,7 @@ function QLessQueue:__tostring()
 end
 
 function QLessQueue:counts(cb)
-  self.client:_call(self, "queues", self.name, function(self, err, res)
-    if res and not err then res = json.decode(res) end
-    if cb then cb(self, err, res) end
-  end)
+  self.client:_call_json(self, "queues", self.name, cb)
 end
 
 function QLessQueue:set_heartbeat(v, cb)
@@ -183,10 +180,10 @@ function QLessQueue:pop(...)
   if is_callable(count) then count, cb = nil, count end
   count, cb = count or 1, cb or dummy
 
-  self.client:_call(self, "pop", self.name, self.worker_name, count,
+  self.client:_call_json(self, "pop", self.name, self.worker_name, count,
     function(self, err, res)
       if err then return cb(self, err, res) end
-      res = json.decode(res)
+
       local jobs = {}
       for i = 1, #res do
         jobs[i] = QLessJob.new(self.client, res[i])
@@ -203,10 +200,10 @@ function QLessQueue:peek(...)
   if is_callable(count) then count, cb = nil, count end
   count, cb = count or 1, cb or dummy
 
-  self.client:_call(self, "peek", self.name, self.worker_name, count,
+  self.client:_call_json(self, "peek", self.name, self.worker_name, count,
     function(self, err, res)
       if err then return cb(self, err, res) end
-      res = json.decode(res)
+
       local jobs = {}
       for i = 1, #res do
         jobs[i] = QLessJob.new(self.client, res[i])
@@ -223,10 +220,7 @@ function QLessQueue:stats(...)
   if is_callable(time) then time, cb = nil, time end
   time, cb = time or now(), cb or dummy
 
-  self.client:_call(self, "stats", self.name, time, function(self, err, res)
-    if res and not err then res = json.decode(res) end
-    cb(self, err, res)
-  end)
+  self.client:_call_json(self, "stats", self.name, time, cb)
 end
 
 function QLessQueue:length(cb)
