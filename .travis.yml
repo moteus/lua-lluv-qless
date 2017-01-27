@@ -11,6 +11,11 @@ matrix:
     # - env: LUA="luajit 2.0"
     # - env: LUA="luajit 2.1"
 
+addons:
+  apt:
+    packages:
+      - uuid-dev
+
 services:
   - redis-server
 
@@ -31,7 +36,7 @@ install:
   - luarocks install luaposix
   - luarocks make rockspecs/lluv-qless-scm-0.rockspec
 
-before_test:
+before_script:
   - luarocks install lua_cliargs 2.5
   - luarocks install lluv-busted --server=http://luarocks.org/dev
 
