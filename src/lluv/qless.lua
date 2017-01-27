@@ -1,4 +1,4 @@
-local QLessClient = require "qless.client"
+local QLessClient = require "lluv.qless.client"
 
 local QLess = {
   new = QLessClient.new;

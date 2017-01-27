@@ -1,7 +1,7 @@
 local uv            = require "lluv"
 local ut            = require "lluv.utils"
-local Utils         = require "qless.utils"
-local BaseClass     = require "qless.base"
+local Utils         = require "lluv.qless.utils"
+local BaseClass     = require "lluv.qless.base"
 local EventEmitter  = require "EventEmitter"
 
 local dummy, is_callable = Utils.dummy, Utils.is_callable

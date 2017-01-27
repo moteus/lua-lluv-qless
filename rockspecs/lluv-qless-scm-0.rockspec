@@ -33,24 +33,24 @@ build = {
   type = "builtin",
 
   modules = {
-    ["qless"                  ] = "src/lluv/qless.lua",
-    ["qless.base"             ] = "src/lluv/qless/base.lua",
-    ["qless.client"           ] = "src/lluv/qless/client.lua",
-    ["qless.config"           ] = "src/lluv/qless/config.lua",
-    ["qless.error"            ] = "src/lluv/qless/error.lua",
-    ["qless.events"           ] = "src/lluv/qless/events.lua",
-    ["qless.job"              ] = "src/lluv/qless/job.lua",
-    ["qless.jobs"             ] = "src/lluv/qless/jobs.lua",
-    ["qless.queue"            ] = "src/lluv/qless/queue.lua",
-    ["qless.reserver.ordered" ] = "src/lluv/qless/reserver/ordered.lua",
-    ["qless.rjob"             ] = "src/lluv/qless/rjob.lua",
-    ["qless.script"           ] = "src/lluv/qless/script.lua",
-    ["qless.utils"            ] = "src/lluv/qless/utils.lua",
-    ["qless.worker.serial"    ] = "src/lluv/qless/worker/serial.lua",
+    ["lluv.qless"                  ] = "src/lluv/qless.lua",
+    ["lluv.qless.base"             ] = "src/lluv/qless/base.lua",
+    ["lluv.qless.client"           ] = "src/lluv/qless/client.lua",
+    ["lluv.qless.config"           ] = "src/lluv/qless/config.lua",
+    ["lluv.qless.error"            ] = "src/lluv/qless/error.lua",
+    ["lluv.qless.events"           ] = "src/lluv/qless/events.lua",
+    ["lluv.qless.job"              ] = "src/lluv/qless/job.lua",
+    ["lluv.qless.jobs"             ] = "src/lluv/qless/jobs.lua",
+    ["lluv.qless.queue"            ] = "src/lluv/qless/queue.lua",
+    ["lluv.qless.reserver.ordered" ] = "src/lluv/qless/reserver/ordered.lua",
+    ["lluv.qless.rjob"             ] = "src/lluv/qless/rjob.lua",
+    ["lluv.qless.script"           ] = "src/lluv/qless/script.lua",
+    ["lluv.qless.utils"            ] = "src/lluv/qless/utils.lua",
+    ["lluv.qless.worker.serial"    ] = "src/lluv/qless/worker/serial.lua",
 
     -- qless core library
-    ["qless.lib.qless"        ] = "src/lluv/qless/lib/qless.lua",
-    ["qless.lib.qless-lib "   ] = "src/lluv/qless/lib/qless-lib.lua",
+    ["lluv.qless.lib.qless"        ] = "src/lluv/qless/lib/qless.lua",
+    ["lluv.qless.lib.qless-lib "   ] = "src/lluv/qless/lib/qless-lib.lua",
   }
 }
 

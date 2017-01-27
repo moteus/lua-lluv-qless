@@ -1,10 +1,10 @@
 local uv                   = require "lluv"
 local ut                   = require "lluv.utils"
 local EventEmitter         = require "EventEmitter"
-local Utils                = require "qless.utils"
-local BaseClass            = require "qless.base"
-local QLessClient          = require "qless.client"
-local QLessError           = require "qless.error"
+local Utils                = require "lluv.qless.utils"
+local BaseClass            = require "lluv.qless.base"
+local QLessClient          = require "lluv.qless.client"
+local QLessError           = require "lluv.qless.error"
 
 local json = Utils.json
 
@@ -28,7 +28,7 @@ function QLessWorkerSerial:__init(options)
 
   local reserver = options.reserver or 'ordered'
   if type(reserver) == 'string' then
-    reserver = require ("qless.reserver." .. reserver)
+    reserver = require ("lluv.qless.reserver." .. reserver)
   end
 
   self._client        = options.client or QLessClient.new(options)

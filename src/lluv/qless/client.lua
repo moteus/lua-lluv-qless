@@ -2,14 +2,14 @@ local uv             = require "lluv"
 local ut             = require "lluv.utils"
 local redis          = require "lluv.redis"
 
-local Utils          = require "qless.utils"
-local BaseClass      = require "qless.base"
+local Utils          = require "lluv.qless.utils"
+local BaseClass      = require "lluv.qless.base"
 
-local QLessLuaScript = require "qless.script"
-local QLessConfig    = require "qless.config"
-local QLessEvents    = require "qless.events"
-local QLessQueue     = require "qless.queue"
-local QLessJobs      = require "qless.jobs"
+local QLessLuaScript = require "lluv.qless.script"
+local QLessConfig    = require "lluv.qless.config"
+local QLessEvents    = require "lluv.qless.events"
+local QLessQueue     = require "lluv.qless.queue"
+local QLessJobs      = require "lluv.qless.jobs"
 
 local unpack = unpack or table.unpack
 

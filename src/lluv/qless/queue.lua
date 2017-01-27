@@ -1,7 +1,7 @@
 local ut           = require "lluv.utils"
-local Utils        = require "qless.utils"
-local BaseClass    = require "qless.base"
-local QLessJob     = require "qless.job"
+local Utils        = require "lluv.qless.utils"
+local BaseClass    = require "lluv.qless.base"
+local QLessJob     = require "lluv.qless.job"
 
 local json, now, pass_self, pack_args, dummy, is_callable =
   Utils.json, Utils.now, Utils.pass_self, Utils.pack_args, Utils.dummy, Utils.is_callable

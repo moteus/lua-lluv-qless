@@ -1,6 +1,6 @@
 local ut           = require "lluv.utils"
-local Utils        = require "qless.utils"
-local BaseClass    = require "qless.base"
+local Utils        = require "lluv.qless.utils"
+local BaseClass    = require "lluv.qless.base"
 
 local json, dummy = Utils.json, Utils.dummy
 

@@ -1,8 +1,8 @@
 local uv           = require "lluv"
 local ut           = require "lluv.utils"
-local Utils        = require "qless.utils"
-local BaseClass    = require "qless.base"
-local QLessError   = require "qless.error"
+local Utils        = require "lluv.qless.utils"
+local BaseClass    = require "lluv.qless.base"
+local QLessError   = require "lluv.qless.error"
 local EventEmitter = require "EventEmitter"
 
 local unpack = unpack or table.unpack

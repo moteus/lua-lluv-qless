@@ -1,4 +1,4 @@
-local QLess = require "qless"
+local QLess = require "lluv.qless"
 local uv    = require "lluv"
 local say   = require "say"
 local loop  = require 'lluv.busted.loop'

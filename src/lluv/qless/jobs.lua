@@ -1,8 +1,8 @@
 local ut            = require "lluv.utils"
-local Utils         = require "qless.utils"
-local BaseClass     = require "qless.base"
-local QLessJob      = require "qless.job"
-local QLessRecurJob = require "qless.rjob"
+local Utils         = require "lluv.qless.utils"
+local BaseClass     = require "lluv.qless.base"
+local QLessJob      = require "lluv.qless.job"
+local QLessRecurJob = require "lluv.qless.rjob"
 
 local unpack = unpack or table.unpack
 

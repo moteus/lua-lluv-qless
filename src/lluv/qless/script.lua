@@ -1,8 +1,8 @@
 local ut           = require "lluv.utils"
-local Utils        = require "qless.utils"
-local BaseClass    = require "qless.base"
+local Utils        = require "lluv.qless.utils"
+local BaseClass    = require "lluv.qless.base"
+local QLessError   = require "lluv.qless.error"
 local debug        = require "debug"
-local QLessError   = require "qless.error"
 
 local unpack = unpack or table.unpack
 local pack_args, read_sha1_file = Utils.pack_args, Utils.read_sha1_file
