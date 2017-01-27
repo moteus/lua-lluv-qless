@@ -111,7 +111,7 @@ end
 function QLessJob:set_priority(v, cb)
   assert(tonumber(v))
 
-  self.client:_call(self, 'priority', v, function(self, err, res)
+  self.client:_call(self, 'priority', self.jid, v, function(self, err, res)
     if not err then self._priority = v end
     if cb then return cb(self, err, res) end
   end)

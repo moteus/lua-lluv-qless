@@ -1,6 +1,5 @@
 local QLess = require "lluv.qless"
 local uv    = require "lluv"
-local say   = require "say"
 local loop  = require 'lluv.busted.loop'
 
 local A = function(a)
@@ -488,6 +487,71 @@ describe('QLess test', function()
     end)
   end)
 
+  describe('Basic tests about the Job class', function()
+    local queue
+
+    describe('Test the Job class', function()
+
+      it('Has all the basic attributes we would expect', function(done) async()
+        local atts = {'data', 'jid', 'priority', 'klass', 'queue_name', 'tags',
+            'expires_at', 'original_retries', 'retries_left', 'worker_name',
+            'dependents', 'dependencies'}
+        queue:put('Foo', {whiz = 'bang'}, {jid='jid', tags={'foo'}, retries=3},
+        function(self, err, jid)
+          assert_nil(err) assert_equal('jid', jid)
+          client:job(jid, function(self, err, job)
+            assert_nil(err) assert.qless_class('Job', job)
+            local values = {}
+            for _, name in ipairs(atts) do values[name] = job[name] end
+            assert_same({
+              data = {whiz = 'bang'},
+              dependencies = {},
+              dependents = {},
+              expires_at = 0,
+              jid = 'jid',
+              klass = 'Foo',
+              original_retries = 3,
+              priority = 0,
+              queue_name = 'foo',
+              retries_left= 3,
+              tags =  {'foo'},
+              worker_name = ''
+            }, values)
+            done()
+          end)
+        end)
+      end)
+
+      it('We can set a job`s priority', function(done) async()
+        queue:put('Foo', {}, {jid='jid', priority=0}, function(self, err, jid)
+          assert_nil(err) assert_equal('jid', jid)
+          client:job(jid, function(self, err, job)
+            assert_nil(err) assert.qless_class('Job', job)
+            assert_equal(0, job.priority)
+            assert.error(function() job.priority = 10 end)
+            job:set_priority(10, function(self, err, res)
+              assert_equal(job, self) assert_nil(err) assert_equal(10, res)
+              assert_equal(10, job.priority)
+              done()
+            end)
+          end)
+        end)
+      end)
+
+    end)
+
+    before_each(function(done) async()
+      queue = assert.qless_class('Queue', client:queue('foo'))
+      done()
+    end)
+
+    after_each(function(done) async()
+      queue = nil
+      done()
+    end)
+
+  end)
+
   before_each(function(done) async()
     client = assert.qless_class('Client', QLess.new())
     redis = client._redis
@@ -515,19 +579,21 @@ describe('QLess test', function()
 end)
 
 do -- retgister `qless_class` assertion
+local say   = require "say"
+
 local getmetatable = getmetatable
 
 local Classes = {
-  LuaScript             = require "qless.script";
-  Job                   = require "qless.job";
-  RecurJob              = require "qless.rjob";
-  Jobs                  = require "qless.jobs";
-  Queue                 = require "qless.queue";
-  Events                = require "qless.events";
-  Client                = require "qless.client";
-  Config                = require "qless.config";
-  ["Reserver::Ordered"] = require "qless.reserver.ordered";
-  ["Worker::Serial"]    = require "qless.worker.serial";
+  LuaScript             = require "lluv.qless.script";
+  Job                   = require "lluv.qless.job";
+  RecurJob              = require "lluv.qless.rjob";
+  Jobs                  = require "lluv.qless.jobs";
+  Queue                 = require "lluv.qless.queue";
+  Events                = require "lluv.qless.events";
+  Client                = require "lluv.qless.client";
+  Config                = require "lluv.qless.config";
+  ["Reserver::Ordered"] = require "lluv.qless.reserver.ordered";
+  ["Worker::Serial"]    = require "lluv.qless.worker.serial";
 }
 
 local function is_qless_class(state, arguments)
