@@ -48,7 +48,10 @@ function QLessQueues:queue(name)
 end
 
 function QLessQueues:counts(cb)
-  return self._client:_call(self, 'queues', cb)
+  return self._client:_call(self, 'queues', function(self, err, res)
+    if res and not err then res = json.decode(res) end
+    if cb then cb(self, err, res) end
+  end)
 end
 
 end
@@ -70,8 +73,15 @@ function QLessWorkers:__tostring()
   return self.__base.__tostring(self, "QLess::Workers")
 end
 
+function QLessWorkers:_get(_self, name, cb)
+  return self._client:_call(_self, 'workers', name, function(self, err, res)
+    if res and not err then res = json.decode(res) end
+    if cb then cb(self, err, res) end
+  end)
+end
+
 function QLessWorkers:worker(name, cb)
-  return self._client:_call(self, 'workers', name, cb or dummy)
+  return self:_get(self, name, cb)
 end
 
 function QLessWorkers:counts(cb)
@@ -170,6 +180,10 @@ end
 
 function QLessClient:queue(name)
   return self.queues:queue(name)
+end
+
+function QLessClient:worker(name, cb)
+  return self.workers:_get(self, name, cb)
 end
 
 function QLessClient:job(jid, cb)
