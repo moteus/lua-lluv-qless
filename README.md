@@ -1,4 +1,7 @@
 # lua-lluv-qless
+[![Licence](http://img.shields.io/badge/Licence-MIT-brightgreen.svg)](LICENSE)
+[![Build Status](https://travis-ci.org/moteus/lua-lluv-qless.svg?branch=master)](https://travis-ci.org/moteus/lua-lluv-qless)
+[![Coverage Status](https://coveralls.io/repos/github/moteus/lua-lluv-qless/badge.svg?branch=master)](https://coveralls.io/github/moteus/lua-lluv-qless?branch=master)
 
 ##Lua Bindings for [qless](https://github.com/seomoz/qless-core)
 
