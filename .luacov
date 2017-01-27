@@ -4,19 +4,19 @@ return {
   runreport   = false;
   deletestats = false;
 
-  include = {
-    "^.-/lluv/qless$",
-    "^.-/lluv/qless/.+$",
-  };
-
-  exclude = {
-    "^.-/lluv/qless/lib/.+$",
-  };
+  -- include = {
+  --   "^.-/lluv/qless$",
+  --   "^.-/lluv/qless/.+$",
+  -- };
+  -- 
+  -- exclude = {
+  --   "^.-/lluv/qless/lib/.+$",
+  -- };
 
   coveralls = {
 
     pathcorrect = {
-      {"^.-/share/lua/5.%d/", "src/lua/"};
+      {"^.-/share/lua/5.%d/", "src/"};
     };
 
   };
