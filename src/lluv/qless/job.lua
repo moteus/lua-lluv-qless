@@ -303,7 +303,7 @@ function QLessJob:retry(...)
     group or "[unknown group]",
     message or "[no message]",
     function(self, err, res)
-      self:end_state_change("retry", err)
+      self:finish_state_change("retry", err)
       cb(self, err, res)
     end
   )
