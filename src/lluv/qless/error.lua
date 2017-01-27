@@ -4,6 +4,8 @@ local function super(self, m, ...)
   return self.__base[m](self, ...)
 end
 
+local QLessErrorClassesNames = {}
+
 -------------------------------------------------------------------------------
 local QLessError = ut.class() do
 
@@ -37,6 +39,12 @@ function QLessError:ext()
 end
 
 function QLessError:__tostring()
+  local name = QLessErrorClassesNames[self]
+
+  if name then
+    return "QLess::Error::" .. name .. " class"
+  end
+
   local err = string.format("[%s][%s] %s (%d)",
     self:cat(), self:name(), self:msg(), self:no()
   )
@@ -47,6 +55,10 @@ function QLessError:__tostring()
 end
 
 function QLessError:__eq(lhs)
+  if QLessErrorClassesNames[self] then
+    return rawequal(self, lhs)
+  end
+
   return getmetatable(lhs) == getmetatable(self)
     and self:name() == lhs:name()
     and self:msg()  == lhs:msg()
@@ -89,8 +101,8 @@ local QLessLockLostError = ut.class(QLessError) do
 
 local single
 
-function QLessLockLostError:__init(jid)
-  return super(self, '__init', 'LockLost', 'Lost lock for job', jid, -1)
+function QLessLockLostError:__init(jid, msg)
+  return super(self, '__init', 'LockLost', msg or 'Lost lock for job', jid, -1)
 end
 
 function QLessLockLostError:__tostring()
@@ -107,6 +119,12 @@ end
 local function is(klass, err)
   return err and (getmetatable(err) == klass)
 end
+
+QLessErrorClassesNames = {
+  [QLessError]          = 'General';
+  [QLessLuaScriptError] = 'LuaScript';
+  [QLessLockLostError]  = 'LockLost';
+}
 
 return {
   is        = is;

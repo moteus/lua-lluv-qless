@@ -228,6 +228,15 @@ function QLessJob:heartbeat(skip_data, cb)
 
   local on_hb = function(self, err, res)
     if res and not err then self.expires_at = res end
+
+    if err and QLessError.is(QLessError.LuaScript, err) then
+      err = QLessError.LockLost.new(self.jid, err:msg())
+      self:emit('lock_lost', {
+        event = 'lock_lost';
+        jid = self.jid;
+      })
+    end
+
     if cb then cb(self, err, res) end
   end
 
@@ -254,7 +263,7 @@ function QLessJob:complete(...)
   next_queue, options = args[1], args[2] or {}
 
   local function on_complete(self, err, res)
-    self:finish_state_change("complete", err)
+    self:finish_state_change("complete", err, res)
     if cb then cb(self, err, res) end
   end
 
