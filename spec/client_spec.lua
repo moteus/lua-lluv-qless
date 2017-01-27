@@ -441,6 +441,53 @@ describe('QLess test', function()
     end)
   end)
 
+  describe('Tests about events', function()
+    local events
+
+    describe('Ensure we can get a basic event', function()
+      it('Basic set/get/unset', function(done) async()
+        local popped = 0
+
+        events:on('popped', function(self, event, data)
+          assert_equal(events, self) assert_equal('popped', event)
+          popped = popped + 1
+        end)
+
+        events:subscribe({'popped'}, function(self, err)
+          assert_equal(events, self) assert_nil(err)
+          client:queue('foo'):pop(function(self, err, job)
+            assert_nil(err) assert.qless_class('Job', job)
+            uv.timer():start(100, function()
+              assert_equal(1, popped)
+              done()
+            end)
+          end)
+        end)
+      end)
+    end)
+
+    before_each(function(done) async()
+      events = assert.qless_class('Events', client:events())
+      client:queue('foo'):put('Foo', {}, {jid='jid'}, function(_, err, jid)
+        assert_nil(err) assert_equal('jid', jid)
+        client:job(jid, function(_, err, job)
+          assert_nil(err) assert.qless_class('Job', job)
+          job:track(function(_, err)
+            assert_nil(err) done()
+          end)
+        end)
+      end)
+    end)
+
+    after_each(function(done) async()
+      if events then
+        events:close(function() done() end)
+      else
+        done()
+      end
+    end)
+  end)
+
   before_each(function(done) async()
     client = assert.qless_class('Client', QLess.new())
     redis = client._redis

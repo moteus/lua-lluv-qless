@@ -38,10 +38,15 @@ install:
 
 before_script:
   - luarocks install lua_cliargs 2.5
+  - luarocks install luacov-coveralls
   - luarocks install lluv-busted --server=http://luarocks.org/dev
 
 script:
-  - busted_bootstrap
+  - busted_bootstrap -c
+
+after_success:
+  - luarocks install lua-curl
+  - luacov-coveralls -e src/lluv/qless/lib -e $TRAVIS_BUILD_DIR/here
 
 notifications:
   email:
