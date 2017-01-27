@@ -36,7 +36,12 @@ if not getpid then
 
   if posix and posix.getpid then
     getpid = function ()
-      if not _pid then _pid = posix.getpid() end
+      if not _pid then
+        _pid = posix.getpid()
+        if type(_pid) == 'table' then
+          _pid = _pid.pid
+        end
+      end
       return _pid
     end
   end
