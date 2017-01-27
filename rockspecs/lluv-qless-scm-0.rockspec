@@ -18,6 +18,7 @@ description = {
 dependencies = {
   "lua >= 5.1, < 5.4",
   "bgcrypto-sha",
+  "eventemitter",
   "lluv-redis",
   "luasocket",
   "luuid",
