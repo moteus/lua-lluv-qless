@@ -1137,6 +1137,66 @@ describe('QLess test', function()
 
   end)
 
+  describe('Basic tests about the Queue class', function()
+    local queue
+
+    describe('Test the QueueJobs class', function()
+      it('The queue.Jobs class provides access to job counts', function(done) async()
+        local jobs = queue.jobs
+        jobs:depends(function(self, err, res)
+          assert_equal(jobs, self) assert_nil(err) assert_same(A{}, res)
+          jobs:running(function(self, err, res)
+            assert_equal(jobs, self) assert_nil(err) assert_same(A{}, res)
+            jobs:stalled(function(self, err, res)
+              assert_equal(jobs, self) assert_nil(err) assert_same(A{}, res)
+              jobs:scheduled(function(self, err, res)
+                assert_equal(jobs, self) assert_nil(err) assert_same(A{}, res)
+                jobs:recurring(function(self, err, res)
+                  assert_equal(jobs, self) assert_nil(err) assert_same(A{}, res)
+                  done()
+                end)
+              end)
+            end)
+          end)
+        end)
+      end)
+    end)
+  
+    describe('Test the Queue class', function()
+      it('Provides access to job counts', function(done) async()
+        queue:put('Foo', {}, function(_, err, jid)
+          assert_nil(err)
+          queue:counts(function(self, err, res)
+            assert_equal(queue, self) assert_nil(err)
+            assert_same({
+              depends   = 0,
+              name      = 'foo',
+              paused    = false,
+              recurring = 0,
+              running   = 0,
+              scheduled = 0,
+              stalled   = 0,
+              waiting   = 1
+            }, res)
+            done()
+          end)
+        end)
+      end)
+
+    end)
+
+    before_each(function(done) async()
+      queue = assert.qless_class('Queue', client:queue('foo'))
+      done()
+    end)
+
+    after_each(function(done) async()
+      queue = nil
+      done()
+    end)
+
+  end)
+
   before_each(function(done) async()
     client = assert.qless_class('Client', QLess.new())
     redis = client._redis
