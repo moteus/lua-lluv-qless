@@ -52,7 +52,7 @@ return {
 #### Worker
 ```Lua
 local uv                = require 'lluv'
-local QLessWorkerSerial = require 'qless.worker.serial'
+local QLessWorkerSerial = require 'lluv.qless.worker.serial'
 
 local worker = QLessWorkerSerial.new{
   queues    = {'test-queue'};
@@ -67,7 +67,8 @@ uv.run()
 
 #### Client
 ```Lua
-local QLess = require 'qless'
+local uv    = require 'lluv'
+local QLess = require 'lluv.qless'
 
 local qless = QLess.new()
 

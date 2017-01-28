@@ -9,6 +9,27 @@ end
 
 setloop(loop) loop.set_timeout(5)
 
+local function preload_klass(name, klass)
+  package.preload[name] = function() return klass end
+end
+
+local function load_klass(name, klass)
+  package.loaded[name] = klass
+end
+
+local function unload_klass(name)
+  package.preload[name], package.loaded[name] = nil
+end
+
+-- A dummy job
+local Foo = {} do
+
+function Foo.bar(job) end
+
+end
+
+preload_klass('Foo', Foo)
+
 describe('QLess test', function()
   local client, redis
 
@@ -835,6 +856,44 @@ describe('QLess test', function()
               done()
             end)
             assert.falsy(job.state_changed)
+          end)
+        end)
+      end)
+
+      it('Can supply a group and message when retrying', function(done) async()
+        queue:put('Foo', {}, {jid='jid'}, function(self, err, jid)
+          assert_nil(err) assert_equal('jid', jid)
+          queue:pop(function(self, err, job)
+            assert_nil(err) assert.qless_class('Job', job)
+            job:retry(0, 'group', 'message', function(self, err)
+              assert_equal(job, self) assert_nil(err)
+              assert.truthy(job.state_changed)
+              client:job('jid', function(self, err, job)
+                assert_nil(err) assert.qless_class('Job', job)
+                assert.equal('group', job.failure.group)
+                assert.equal('message', job.failure.message)
+                done()
+              end)
+            end)
+            assert.falsy(job.state_changed)
+          end)
+        end)
+      end)
+
+      it('Raises an error if the class doesn`t have the method', function(done) async()
+        queue:put('Foo', {}, {jid='jid'}, function(self, err, jid)
+          assert_nil(err) assert_equal('jid', jid)
+          queue:pop(function(self, err, job)
+            assert_nil(err) assert.qless_class('Job', job)
+            job:perform(function(self, err, res)
+              assert.qless_class('Error::General', err)
+              client:job(jid, function(self, err, job)
+                assert_nil(err) assert.qless_class('Job', job)
+                assert_equal('failed', job.state)
+                assert_equal('foo-method-missing', job.failure.group)
+                done()
+              end)
+            end)
           end)
         end)
       end)

@@ -128,19 +128,21 @@ end
 function QLessJob:perform(cb, ...)
   local ok, task = pcall(require, self.klass_prefix .. self.klass)
   if not ok then
-    local err = QLessError.General.new('invalid-task', 
-      "Module '" .. tostring(self.klass) .. "' could not be found",
-      self.queue_name
+    local err = QLessError.General.new(
+      self.queue_name .. '-' .. self.klass,
+      'Failed to load ' .. self.klass,
+      task
     )
-    return uv.defer(cb, self, err)
+    return self:fail(err:name(), err, function() cb(self, err) end)
   end
 
   if (type(task) ~= 'table') or not is_callable(task.perform) then
-    local err = QLessError.General.new('invalid-task', 
+    local err = QLessError.General.new(
+      self.queue_name .. '-method-missing',
       "Module '" .. self.klass .. "' has no perform function",
       self.queue_name
     )
-    return uv.defer(cb, self, err)
+    return self:fail(err:name(), err, function() cb(self, err) end)
   end
 
   cb = once(cb)
@@ -154,11 +156,12 @@ function QLessJob:perform(cb, ...)
   end, ...)
 
   if not ok then
-    local err = QLessError.General.new('failed', 
-      "'" .. self.klass .. "' " .. (err or ""),
-      self.queue_name
+    local err = QLessError.General.new(
+      self.queue_name .. '-' .. self.klass,
+      'Failed to execute ' .. self.klass .. '.perform',
+      err
     )
-    return uv.defer(cb, self, err)
+    return self:fail(err:name(), err, function() cb(self, err) end)
   end
 end
 
