@@ -129,7 +129,7 @@ function QLessJob:perform(cb, ...)
   local ok, task = pcall(require, self.klass_prefix .. self.klass)
   if not ok then
     local err = QLessError.General.new(
-      self.queue_name .. '-' .. self.klass,
+      self.queue_name .. '-NameError',
       'Failed to load ' .. self.klass,
       task
     )
