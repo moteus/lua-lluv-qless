@@ -125,6 +125,13 @@ function QLessRecurJob:untag(...)
   return self.client:_call_json(self, "recur.untag", self.jid, unpack(args))
 end
 
+function QLessRecurJob:get_next(cb)
+  local key = 'ql:q:' .. self.queue_name .. '-recur'
+  self.client._redis:zscore(key , self.jid, function(_, err, res)
+    cb(self, err, tonumber(res) or res)
+  end)
+end
+
 end
 -------------------------------------------------------------------------------
 
