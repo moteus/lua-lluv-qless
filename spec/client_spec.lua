@@ -21,12 +21,8 @@ local function unload_klass(name)
   package.preload[name], package.loaded[name] = nil
 end
 
--- A dummy job
-local Foo = {} do
-
-function Foo.bar(job) end
-
-end
+-- A dummy jobs
+local Foo = {}
 
 preload_klass('Foo', Foo)
 
@@ -920,6 +916,49 @@ describe('QLess test', function()
         end)
       end)
 
+      it('Raises an error if it can`t import the module', function(done) async()
+        local called, timer = 0
+
+        load_klass('Boo', {
+          perform = function(job, job_done)
+            timer = uv.timer():start(1000, function()
+              uv.defer(function()
+                assert.equal(2, called)
+                done()
+              end)
+              -- we ignore callback calls
+              job_done()
+            end)
+            error('some error')
+          end
+        })
+
+        queue:put('Boo', {}, {jid='jid'}, function(self, err, jid)
+          assert_nil(err) assert_equal('jid', jid)
+          queue:pop(function(self, err, job)
+            assert_nil(err) assert.qless_class('Job', job)
+            job:perform(function(self, err, res)
+              called = called + 1
+              assert.qless_class('Error::General', err)
+              assert.match('some error', err)
+              -- in fact we can not stop execution this action
+              assert.truthy(timer:active())
+              client:job(jid, function(self, err, job)
+                assert_nil(err) assert.qless_class('Job', job)
+                assert_equal('failed', job.state)
+                assert_equal('foo-Boo', job.failure.group)
+                assert.match('some error', job.failure.message)
+                called = called + 1
+                -- wait until timer fire
+              end)
+            end)
+          end)
+        end)
+      end)
+
+      after_each(function()
+        unload_klass('Boo')
+      end)
     end)
 
     describe('Test the RecurJob class', function()
