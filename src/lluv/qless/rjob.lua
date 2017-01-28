@@ -2,7 +2,7 @@ local ut           = require "lluv.utils"
 local Utils        = require "lluv.qless.utils"
 local BaseClass    = require "lluv.qless.base"
 
-local json, dummy = Utils.json, Utils.dummy
+local json, dummy, pack_args = Utils.json, Utils.dummy, Utils.pack_args
 
 -------------------------------------------------------------------------------
 local QLessRecurJob = ut.class(BaseClass) do
@@ -94,7 +94,12 @@ function QLessRecurJob:requeue(queue, cb)
 end
 
 function QLessRecurJob:cancel(cb)
-  self.client:_call(self, "unrecur", self.jid, cb or dummy)
+  local jid = self.jid
+
+  self.client:_call(self, "unrecur", self.jid, function(self, err, res)
+    if res == 1 then res = {n=1, jid} end
+    if cb then cb(self, err, res) end
+  end)
 end
 
 function QLessRecurJob:tag(...)

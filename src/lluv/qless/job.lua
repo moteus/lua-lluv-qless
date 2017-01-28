@@ -191,7 +191,7 @@ function QLessJob:requeue(queue, ...)
   if not options then options = {} end
 
   self:begin_state_change("requeue")
-  self.client:_call(self, "requeue", 
+  self.client:_call(self, "requeue",
     self.client.worker_name, queue, self.jid, self.klass,
     json.encode(options.data or self.data),
     options.delay or 0,
