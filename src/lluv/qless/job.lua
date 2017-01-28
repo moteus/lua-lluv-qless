@@ -201,6 +201,8 @@ function QLessJob:requeue(queue, ...)
     "depends",  json.encode(options.depends or self.dependencies),
     function(self, err, res)
       self:finish_state_change("requeue", err)
+      -- this needs to make it compatiable with recur.update queue
+      if res == self.jid then res = tostring(queue) end
       if cb then cb(self, err, res) end
     end
   )
