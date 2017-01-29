@@ -200,7 +200,7 @@ function QLessQueue:peek(...)
   if is_callable(count) then count, cb = nil, count end
   count, cb = count or 1, cb or dummy
 
-  self.client:_call_json(self, "peek", self.name, self.worker_name, count,
+  self.client:_call_json(self, "peek", self.name, count,
     function(self, err, res)
       if err then return cb(self, err, res) end
 
@@ -225,6 +225,11 @@ end
 
 function QLessQueue:length(cb)
   local redis = self.client._redis
+
+  --! @fixme access to private fields
+  if redis:closed() then
+    return uv.defer(cb, self, self.client._last_redis_error or ENOTCONN)
+  end
 
   cb = cb or dummy
 
