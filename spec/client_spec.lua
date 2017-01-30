@@ -2,6 +2,15 @@ local QLess = require "lluv.qless"
 local uv    = require "lluv"
 local loop  = require 'lluv.busted.loop'
 
+local stp do local ok
+ok, stp = pcall(require, "StackTracePlus")
+if not ok then stp = nil end
+end
+
+local logger if pcall(require, "log") then
+  logger = require "log".new('info', require 'log.writer.stdout'.new())
+end
+
 --! @todo move to config
 local TEST_SERVER = 'redis://127.0.0.1/11'
 
@@ -18,7 +27,11 @@ local A = function(a)
   return a
 end
 
-setloop(loop) loop.set_timeout(5)
+setloop(loop)
+
+loop.set_timeout(5)
+
+loop.set_traceback(stp and stp.stacktrace or debug.traceback)
 
 local function preload_klass(name, klass)
   package.preload[name] = function() return klass end
@@ -1414,7 +1427,8 @@ describe('QLess test', function()
 
   before_each(function(done) async()
     client = assert.qless_class('Client', QLess.new{
-      server = TEST_SERVER
+      server = TEST_SERVER,
+      logger = logger,
     })
     redis = client._redis
     redis:flushdb(function(self, err)
