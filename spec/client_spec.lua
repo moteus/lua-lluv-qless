@@ -2,6 +2,9 @@ local QLess = require "lluv.qless"
 local uv    = require "lluv"
 local loop  = require 'lluv.busted.loop'
 
+--! @todo move to config
+local TEST_SERVER = 'redis://127.0.0.1/11'
+
 QLess.Reserver = {
   Ordered = require "lluv.qless.reserver.ordered"
 }
@@ -381,7 +384,10 @@ describe('QLess test', function()
       end)
 
       before_each(function(done) async()
-        worker = assert.qless_class('Client', QLess.new{worker_name = 'worker'})
+        worker = assert.qless_class('Client', QLess.new{
+          worker_name = 'worker',
+          redis       = client:new_redis_connection()
+        })
         done()
       end)
 
@@ -1407,7 +1413,9 @@ describe('QLess test', function()
   end)
 
   before_each(function(done) async()
-    client = assert.qless_class('Client', QLess.new())
+    client = assert.qless_class('Client', QLess.new{
+      server = TEST_SERVER
+    })
     redis = client._redis
     redis:flushdb(function(self, err)
       assert.is_nil(err)

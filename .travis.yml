@@ -60,12 +60,12 @@ before_script:
   - luarocks show lua_cliargs      > /dev/null 2>&1 || luarocks install lua_cliargs 2.5
   - luarocks show luacov-coveralls > /dev/null 2>&1 || luarocks install luacov-coveralls
   - luarocks show lluv-busted      > /dev/null 2>&1 || luarocks install lluv-busted --server=http://luarocks.org/dev
+  - luarocks show lua-curl         > /dev/null 2>&1 || luarocks install lua-curl
 
 script:
   - busted_bootstrap --verbose --coverage
 
 after_success:
-  - luarocks show lua-curl > /dev/null 2>&1 || luarocks install lua-curl
   - luacov-coveralls -v
 
 notifications:
