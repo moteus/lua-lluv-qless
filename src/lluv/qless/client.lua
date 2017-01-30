@@ -127,10 +127,12 @@ function QLessClient:__init(options)
     self.logger.info('%s: connected to redis server', tostring(self))
     self._last_redis_error = nil
   end, function(_, err)
-    if err then
-      self.logger.error('%s: disconnected from redis server: %s', tostring(self), tostring(err))
-    else
-      self.logger.info('%s: disconnected from redis server', tostring(self))
+    if not self._reconnect_redis:closed() then
+      if err then
+        self.logger.error('%s: disconnected from redis server: %s', tostring(self), tostring(err))
+      else
+        self.logger.info('%s: disconnected from redis server', tostring(self))
+      end
     end
 
     self._last_redis_error = err or ENOTCONN
