@@ -8,7 +8,7 @@ if not ok then stp = nil end
 end
 
 local logger if pcall(require, "log") then
-  logger = require "log".new('info', require 'log.writer.stdout'.new())
+  logger = require "log".new('warning', require 'log.writer.stdout'.new())
 end
 
 --! @todo move to config
