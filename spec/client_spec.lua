@@ -1,5 +1,6 @@
 local QLess = require "lluv.qless"
 local uv    = require "lluv"
+local ut    = require "lluv.utils"
 local loop  = require 'lluv.busted.loop'
 
 local stp do local ok
@@ -1451,6 +1452,32 @@ describe('QLess test', function()
     else
       done()
     end
+  end)
+
+  setup(function(done) async()
+    local function V(version)
+      local maj, min = ut.usplit(version, '.', true)
+      return tonumber(maj) * 1000 + tonumber(min)
+    end
+
+    local verify_redis_version = function(res)
+      local version = assert.string(res.server.redis_version)
+      assert.truthy(V(version) >= V'2.2' and V(version) < V'4.0', 'Unsupported Redis version:' .. version)
+      done()
+    end
+
+    local client = assert.qless_class('Client', QLess.new{
+      server = TEST_SERVER,
+      logger = logger,
+    })
+
+    local redis = client._redis
+
+    redis:info(function(self, err, res)
+      client:close(function()
+        uv.defer(verify_redis_version, res)
+      end)
+    end)
   end)
 
 end)
