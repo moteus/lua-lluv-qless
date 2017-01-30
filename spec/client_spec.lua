@@ -3,22 +3,9 @@ local prequire = function(m)
   if ok then return m end
 end
 
-local TestSetup = prequire "setup" or require "spec.setup"
+local TestSetup = prequire"spec.setup" or require "setup"
 local QLess     = require "lluv.qless"
 local uv        = require "lluv"
-
-QLess.Reserver = {
-  Ordered = require "lluv.qless.reserver.ordered"
-}
-
-QLess.Worker = {
-  Serial = require "lluv.qless.worker.serial"
-}
-
-local A = function(a)
-  if not a.n then a.n = #a end
-  return a
-end
 
 -- A dummy jobs
 local Foo = KlassUtils.preload('Foo', {})
@@ -170,7 +157,7 @@ describe('QLess test', function()
 
       it('Can give us access to complete jobs', function(done) async()
         client.jobs:complete(function(self, err, jobs)
-          assert.same(client.jobs, self) assert.is_nil(err) assert.same(A{}, jobs)
+          assert.same(client.jobs, self) assert.is_nil(err) assert.same(REDIS_ARRAY{}, jobs)
           local queue = assert.qless_class('Queue', client:queue('foo'))
           queue:put('Foo', {}, {jid='jid'}, function(self, err, jid)
             assert.same(queue, self) assert.is_nil(err) assert.equal('jid', jid)
@@ -179,7 +166,7 @@ describe('QLess test', function()
               job:complete(function(self, err, res)
                 assert.same(job, self) assert.is_nil(err) assert.equal('complete', res)
                 client.jobs:complete(function(self, err, jobs)
-                  assert.same(client.jobs, self) assert.is_nil(err) assert.same(A{'jid'}, jobs)
+                  assert.same(client.jobs, self) assert.is_nil(err) assert.same(REDIS_ARRAY{'jid'}, jobs)
                   done()
                 end)
               end)
@@ -616,7 +603,7 @@ describe('QLess test', function()
           client:job(jid, function(self, err, job)
             assert_nil(err) assert.qless_class('Job', job)
             job:cancel(function(self, err, res)
-              assert_nil(err) assert.same(A{jid}, res)
+              assert_nil(err) assert.same(REDIS_ARRAY{jid}, res)
               client:job(jid, function(self, err, job)
                 assert_nil(err) assert_nil(job)
                 done()
@@ -709,7 +696,7 @@ describe('QLess test', function()
             queue:pop(function(self, err, job)
               assert_nil(err) assert.qless_class('Job', job)
               job:cancel(function(self, err, res)
-                assert_nil(err) assert.same(A{'jid'}, res)
+                assert_nil(err) assert.same(REDIS_ARRAY{'jid'}, res)
               end)
               assert_nil(err) assert.qless_class('Job', job)
               job:complete(function(self, err, res)
@@ -1075,7 +1062,7 @@ describe('QLess test', function()
           client:job(jid, function(self, err, job)
             assert_nil(err) assert.qless_class('RecurJob', job)
             job:cancel(function(self, err, res)
-              assert_nil(err) assert.same(A{jid}, res)
+              assert_nil(err) assert.same(REDIS_ARRAY{jid}, res)
               client:job(jid, function(self, err, job)
                 assert_nil(err) assert_nil(job)
                 done()
@@ -1145,15 +1132,15 @@ describe('QLess test', function()
       it('The queue.Jobs class provides access to job counts', function(done) async()
         local jobs = queue.jobs
         jobs:depends(function(self, err, res)
-          assert_equal(jobs, self) assert_nil(err) assert_same(A{}, res)
+          assert_equal(jobs, self) assert_nil(err) assert_same(REDIS_ARRAY{}, res)
           jobs:running(function(self, err, res)
-            assert_equal(jobs, self) assert_nil(err) assert_same(A{}, res)
+            assert_equal(jobs, self) assert_nil(err) assert_same(REDIS_ARRAY{}, res)
             jobs:stalled(function(self, err, res)
-              assert_equal(jobs, self) assert_nil(err) assert_same(A{}, res)
+              assert_equal(jobs, self) assert_nil(err) assert_same(REDIS_ARRAY{}, res)
               jobs:scheduled(function(self, err, res)
-                assert_equal(jobs, self) assert_nil(err) assert_same(A{}, res)
+                assert_equal(jobs, self) assert_nil(err) assert_same(REDIS_ARRAY{}, res)
                 jobs:recurring(function(self, err, res)
-                  assert_equal(jobs, self) assert_nil(err) assert_same(A{}, res)
+                  assert_equal(jobs, self) assert_nil(err) assert_same(REDIS_ARRAY{}, res)
                   done()
                 end)
               end)
@@ -1407,10 +1394,9 @@ describe('QLess test', function()
   end)
 
   after_each(function(done) async()
-    TestSetup.after_each({client = client, redis  = redis}, function(ctx)
-      redis, client = nil
-      done()
-    end)
+    local ctx = {client = client, redis = redis}
+    redis, client = nil
+    TestSetup.after_each(ctx, function(ctx) done() end)
   end)
 
   setup(function(done) async()

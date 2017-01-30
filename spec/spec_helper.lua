@@ -77,3 +77,13 @@ function KlassUtils.unload(name)
 end
 
 end
+
+-- some aliases
+assert_equal = assert.equal
+assert_same  = assert.same
+assert_nil   = assert.is_nil
+
+REDIS_ARRAY = function(a)
+  if not a.n then a.n = #a end
+  return a
+end

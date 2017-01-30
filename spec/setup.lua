@@ -12,6 +12,14 @@ local QLess = require "lluv.qless"
 local uv    = require "lluv"
 local ut    = require "lluv.utils"
 
+QLess.Reserver = {
+  Ordered = require "lluv.qless.reserver.ordered"
+}
+
+QLess.Worker = {
+  Serial = require "lluv.qless.worker.serial"
+}
+
 local stp do local ok
 ok, stp = pcall(require, "StackTracePlus")
 if not ok then stp = nil end
