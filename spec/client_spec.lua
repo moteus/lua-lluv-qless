@@ -2,6 +2,14 @@ local QLess = require "lluv.qless"
 local uv    = require "lluv"
 local loop  = require 'lluv.busted.loop'
 
+QLess.Reserver = {
+  Ordered = require "lluv.qless.reserver.ordered"
+}
+
+QLess.Worker = {
+  Serial = require "lluv.qless.worker.serial"
+}
+
 local A = function(a)
   if not a.n then a.n = #a end
   return a
@@ -1299,6 +1307,100 @@ describe('QLess test', function()
 
     after_each(function(done) async()
       queue = nil
+      done()
+    end)
+
+  end)
+
+  describe('Basic tests about the Reserver class', function()
+    local q1, q2, q3
+
+    describe('Test the ordered reserver', function()
+      it('should raise error if no queues provided',function(done) async()
+        assert.error(function() QLess.Reserver.Ordered.new() end)
+        done()
+      end)
+
+      it('should respect change queues array',function(done) async()
+        local queues = {}
+        local reserver = QLess.Reserver.Ordered.new(queues)
+        queues[#queues + 1] = q1
+
+        q1:put('Foo', {}, function(_, err) assert_nil(err)
+          reserver:restart(function(self, err, job)
+            assert_equal(reserver, self) assert_nil(err) assert.qless_class('Job', job)
+            done()
+          end)
+        end)
+      end)
+
+      it('should move to next queue only if current is empty',function(done) async()
+        local queues = {}
+        local reserver = QLess.Reserver.Ordered.new(queues)
+        queues[#queues + 1] = q1
+        queues[#queues + 1] = q2
+
+        q1:put('Foo', {}, {jid = 'q1-jid-1'}, function(_, err) assert_nil(err) end)
+        q1:put('Foo', {}, {jid = 'q1-jid-2'}, function(_, err) assert_nil(err) end)
+        q2:put('Foo', {}, {jid = 'q2-jid-1'}, function(_, err) assert_nil(err)
+          reserver:restart(function(self, err, job)
+            assert_equal(reserver, self) assert_nil(err) assert.qless_class('Job', job)
+            assert_equal('q1-jid-2', job.jid)
+            reserver:reserve(function(self, err, job)
+              assert_equal(reserver, self) assert_nil(err) assert.qless_class('Job', job)
+              assert_equal('q1-jid-1', job.jid)
+              reserver:reserve(function(self, err, job)
+                assert_equal(reserver, self) assert_nil(err) assert.qless_class('Job', job)
+                assert_equal('q2-jid-1', job.jid)
+                reserver:reserve(function(self, err, job)
+                  assert_equal(reserver, self) assert_nil(err) assert_nil(job)
+                  done()
+                end)
+              end)
+            end)
+          end)
+        end)
+      end)
+
+      it('should not auto restart from first queue',function(done) async()
+        local queues = {}
+        local reserver = QLess.Reserver.Ordered.new(queues)
+        queues[#queues + 1] = q1
+        queues[#queues + 1] = q2
+
+        q2:put('Foo', {}, {jid = 'q2-jid-1'}, function(_, err) assert_nil(err) end)
+        q2:put('Foo', {}, {jid = 'q2-jid-2'}, function(_, err) assert_nil(err)
+          reserver:restart(function(self, err, job)
+            assert_equal(reserver, self) assert_nil(err) assert.qless_class('Job', job)
+            assert_equal('q2-jid-2', job.jid)
+            q1:put('Foo', {}, {jid = 'q1-jid-1'}, function(_, err) assert_nil(err) end)
+            reserver:reserve(function(self, err, job)
+              assert_equal(reserver, self) assert_nil(err) assert.qless_class('Job', job)
+              assert_equal('q2-jid-1', job.jid)
+              reserver:reserve(function(self, err, job)
+                assert_equal(reserver, self) assert_nil(err) assert_nil(job)
+                reserver:restart(function(self, err, job)
+                  assert_equal(reserver, self) assert_nil(err) assert.qless_class('Job', job)
+                  assert_equal('q1-jid-1', job.jid)
+                  done()
+                end)
+              end)
+            end)
+          end)
+        end)
+      end)
+
+    end)
+
+    before_each(function(done) async()
+      q1 = assert.qless_class('Queue', client:queue('q1'))
+      q2 = assert.qless_class('Queue', client:queue('q2'))
+      q3 = assert.qless_class('Queue', client:queue('q3'))
+      done()
+    end)
+
+    after_each(function(done) async()
+      q1, q2, q3 = nil
       done()
     end)
 

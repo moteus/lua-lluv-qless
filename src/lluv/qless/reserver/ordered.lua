@@ -7,6 +7,8 @@ local BaseClass    = require "lluv.qless.base"
 local QLessReserverOrdered = ut.class(BaseClass) do
 
 function QLessReserverOrdered:__init(queues)
+  assert(type(queues) == 'table')
+
   self.__base.__init(self)
 
   -- active queue index
