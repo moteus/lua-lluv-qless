@@ -1,19 +1,11 @@
-local QLess = require "lluv.qless"
-local uv    = require "lluv"
-local ut    = require "lluv.utils"
-local loop  = require 'lluv.busted.loop'
-
-local stp do local ok
-ok, stp = pcall(require, "StackTracePlus")
-if not ok then stp = nil end
+local prequire = function(m)
+  local ok, m = pcall(require, m)
+  if ok then return m end
 end
 
-local logger if pcall(require, "log") then
-  logger = require "log".new('warning', require 'log.writer.stdout'.new())
-end
-
---! @todo move to config
-local TEST_SERVER = 'redis://127.0.0.1/11'
+local TestSetup = prequire "setup" or require "spec/setup"
+local QLess     = require "lluv.qless"
+local uv        = require "lluv"
 
 QLess.Reserver = {
   Ordered = require "lluv.qless.reserver.ordered"
@@ -28,28 +20,8 @@ local A = function(a)
   return a
 end
 
-setloop(loop)
-
-loop.set_timeout(5)
-
-loop.set_traceback(stp and stp.stacktrace or debug.traceback)
-
-local function preload_klass(name, klass)
-  package.preload[name] = function() return klass end
-end
-
-local function load_klass(name, klass)
-  package.loaded[name] = klass
-end
-
-local function unload_klass(name)
-  package.preload[name], package.loaded[name] = nil
-end
-
 -- A dummy jobs
-local Foo = {}
-
-preload_klass('Foo', Foo)
+local Foo = KlassUtils.preload('Foo', {})
 
 describe('QLess test', function()
   local client, redis
@@ -948,7 +920,7 @@ describe('QLess test', function()
       it('Raises an error if it can`t import the module', function(done) async()
         local called, timer = 0
 
-        load_klass('Boo', {
+        KlassUtils.load('Boo', {
           perform = function(job, job_done)
             timer = uv.timer():start(1000, function()
               uv.defer(function()
@@ -986,7 +958,7 @@ describe('QLess test', function()
       end)
 
       after_each(function()
-        unload_klass('Boo')
+        KlassUtils.unload('Boo')
       end)
     end)
 
@@ -1428,118 +1400,24 @@ describe('QLess test', function()
   end)
 
   before_each(function(done) async()
-    client = assert.qless_class('Client', QLess.new{
-      server = TEST_SERVER,
-      logger = logger,
-    })
-    redis = client._redis
-    redis:flushdb(function(self, err)
-      assert.is_nil(err)
-      self:script_flush(function(self, err)
-        assert.is_nil(err)
-        done()
-      end)
+    TestSetup.before_each({}, function(ctx)
+      client, redis = ctx.client, ctx.redis
+      done()
     end)
   end)
 
   after_each(function(done) async()
-    if client then
-      client:close(function()
-        loop.verify_after()
+    TestSetup.after_each({
+      client = client;
+      redis  = redis;
+    }, function(ctx)
+        redis, client = nil
         done()
-      end)
-      redis, client = nil
-    else
-      done()
-    end
-  end)
-
-  setup(function(done) async()
-    local function V(version)
-      local maj, min = ut.usplit(version, '.', true)
-      return tonumber(maj) * 1000 + tonumber(min)
-    end
-
-    local verify_redis_version = function(res)
-      local version = assert.string(res.server.redis_version)
-      assert.truthy(V(version) >= V'2.2' and V(version) < V'4.0', 'Unsupported Redis version:' .. version)
-      done()
-    end
-
-    local client = assert.qless_class('Client', QLess.new{
-      server = TEST_SERVER,
-      logger = logger,
-    })
-
-    local redis = client._redis
-
-    redis:info(function(self, err, res)
-      client:close(function()
-        uv.defer(verify_redis_version, res)
-      end)
     end)
   end)
 
+  setup(function(done) async()
+    TestSetup.setup({}, function(ctx) done() end)
+  end)
+
 end)
-
-do -- retgister `qless_class` assertion
-local say   = require "say"
-
-local getmetatable = getmetatable
-
-local Classes = {
-  LuaScript             = require "lluv.qless.script";
-  Job                   = require "lluv.qless.job";
-  RecurJob              = require "lluv.qless.rjob";
-  Jobs                  = require "lluv.qless.jobs";
-  Queue                 = require "lluv.qless.queue";
-  Events                = require "lluv.qless.events";
-  Client                = require "lluv.qless.client";
-  Config                = require "lluv.qless.config";
-  ["Reserver::Ordered"] = require "lluv.qless.reserver.ordered";
-  ["Worker::Serial"]    = require "lluv.qless.worker.serial";
-  ["Error::General"]    = require "lluv.qless.error".General;
-  ["Error::LuaScript"]  = require "lluv.qless.error".LuaScript;
-  ["Error::LockLost"]   = require "lluv.qless.error".LockLost;
-}
-
-local function is_qless_class(state, arguments)
-  local class  = arguments[1]
-  local object = arguments[2]
-
-  if type(class) ~= 'string' then
-    error('First argument have to be a QLess class name.')
-    return false
-  end
-
-  if not Classes[class] then
-    error('Unknown QLess class name: ' .. class)
-    return false
-  end
-
-  class = Classes[class]
-
-  arguments[1] = class
-
-  return class == getmetatable(object), {object}
-end
-
-assert:add_formatter(function(t)
-  if type(t) ~= 'table' then return end
-  for name, cls in pairs(Classes) do
-    if cls == t then return "QLess::" .. name end
-  end
-end)
-
-assert:add_formatter(function(t)
-  if type(t) ~= 'table' then return end
-  for name, cls in pairs(Classes) do
-    if cls == getmetatable(t) then return tostring(t) end
-  end
-end)
-
-say:set("assertion.qless_class.positive", "Expected %s type, but got: %s")
-say:set("assertion.qless_class.negative", "Expected not %s type, but got it")
-assert:register("assertion", "qless_class", is_qless_class, "assertion.qless_class.positive", "assertion.qless_class.negative")
-
-end
