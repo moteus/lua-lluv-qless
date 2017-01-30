@@ -370,7 +370,7 @@ describe('QLess test', function()
         end)
       end)
 
-      it('', function(done) async()
+      it('Gives us access to worker counts', function(done) async()
         client:queue('foo'):put('Foo', {}, {jid='jid'}, function(self, err, jid)
           assert.qless_class('Queue', self) assert_nil(err) assert_equal('jid', jid)
           client.workers:counts(function(self, err, res)
@@ -399,7 +399,8 @@ describe('QLess test', function()
       before_each(function(done) async()
         worker = assert.qless_class('Client', QLess.new{
           worker_name = 'worker',
-          redis       = client:new_redis_connection()
+          redis       = client:new_redis_connection(),
+          logger      = client.logger,
         })
         done()
       end)
