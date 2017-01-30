@@ -3,7 +3,7 @@ local prequire = function(m)
   if ok then return m end
 end
 
-local TestSetup = prequire "setup" or require "spec/setup"
+local TestSetup = prequire "setup" or require "spec.setup"
 local QLess     = require "lluv.qless"
 local uv        = require "lluv"
 
@@ -1407,12 +1407,9 @@ describe('QLess test', function()
   end)
 
   after_each(function(done) async()
-    TestSetup.after_each({
-      client = client;
-      redis  = redis;
-    }, function(ctx)
-        redis, client = nil
-        done()
+    TestSetup.after_each({client = client, redis  = redis}, function(ctx)
+      redis, client = nil
+      done()
     end)
   end)
 

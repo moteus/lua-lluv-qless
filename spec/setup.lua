@@ -1,7 +1,12 @@
 --! @todo move to config
 local TEST_SERVER = 'redis://127.0.0.1/11'
 
-require "spec_helper"
+local prequire = function(m)
+  local ok, m = pcall(require, m)
+  if ok then return m end
+end
+
+if not prequire"spec.spec_helper" then require "spec_helper" end
 
 local QLess = require "lluv.qless"
 local uv    = require "lluv"
@@ -72,7 +77,7 @@ local setup = function(ctx, done)
 
   local redis = client._redis
 
-  redis:info(function(self, err, res)
+  redis:info('server', function(self, err, res)
     client:close(function()
       uv.defer(verify_redis_version, res)
     end)
