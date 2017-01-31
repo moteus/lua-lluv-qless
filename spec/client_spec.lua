@@ -1,3 +1,5 @@
+io.stdout:setvbuf'no';io.stderr:setvbuf'no';
+
 local prequire = function(m)
   local ok, m = pcall(require, m)
   if ok then return m end
@@ -1493,12 +1495,62 @@ describe('QLess test', function()
         worker:run()
       end)
 
+      it('worker should notify jobs about lock lost', function(done) async()
+        worker = assert.qless_class('Worker::Serial', QLess.Worker.Serial.new{
+          redis     = client:new_redis_connection();
+          logger    = client.logger;
+          queues    = {'foo'};
+        })
+
+        queue:put('Foo', {}, function(_, err) assert_nil(err) end)
+
+        local called
+
+        local function done_test()
+          assert.truthy(called)
+          done()
+        end
+
+        KlassUtils.preload('Foo', {perform=function(job, done)
+          -- stop fetch next job
+          worker:shutdown()
+
+          -- mark job as timeout
+          client:job(job.jid, function(_, err, job)
+            assert_nil(err) assert.qless_class('Job', job)
+            job:timeout(function(self, err, res)
+              assert_equal(job, self) assert_nil(err) assert_nil(res)
+            end)
+          end)
+
+          -- do some work
+          local timer = uv.timer():start(500, function()
+            done()
+            uv.defer(done_test)
+          end):unref()
+
+          job:on('lock_lost', function()
+            job:off('lock_lost')
+
+            timer:close()
+            called, timer = true
+
+            done()
+            uv.defer(done_test)
+          end)
+
+        end})
+
+        worker:run()
+      end)
+
       before_each(function()
         timeout = loop.set_timeout(20)
         queue = assert.qless_class('Queue', client:queue('foo'))
       end)
 
       after_each(function(done) async()
+        KlassUtils.unload('Foo')
         loop.set_timeout(timeout)
         if worker then
           worker:close(function() done() end)
