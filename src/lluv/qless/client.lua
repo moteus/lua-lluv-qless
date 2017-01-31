@@ -249,10 +249,7 @@ end
 
 function QLessClient:deregister_workers(worker_names, cb)
   local n = #worker_names + 1
-
-  worker_names[n] = function(self, err, res) 
-    if cb then cb(self, err, res) end
-  end
+  worker_names[n] = cb
 
   self:call("worker.deregister", unpack(worker_names))
 
@@ -260,7 +257,10 @@ function QLessClient:deregister_workers(worker_names, cb)
 end
 
 function QLessClient:bulk_cancel(jids, cb)
-  return self:call("cancel", jids, cb or dummy)
+  local n = #jids + 1
+  jids[n] = cb
+  self:call("cancel", unpack(jids))
+  jids[n] = nil
 end
 
 end

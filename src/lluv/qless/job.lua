@@ -318,7 +318,7 @@ function QLessJob:cancel(cb)
   self:begin_state_change("cancel")
   self.client:_call(self, "cancel", self.jid, function(self, err, res)
     self:finish_state_change("cancel", err)
-    if cb then cb(self, err, res) end
+    if cb then cb(self, err, res and res[1]) end
   end)
 end
 

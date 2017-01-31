@@ -4,7 +4,7 @@ local Utils         = require "lluv.qless.utils"
 local BaseClass     = require "lluv.qless.base"
 local EventEmitter  = require "EventEmitter"
 
-local dummy, is_callable = Utils.dummy, Utils.is_callable
+local dummy, is_callable, pass_self = Utils.dummy, Utils.is_callable, Utils.pass_self
 
 local reconnect_redis, call_q = Utils.reconnect_redis, Utils.call_q
 
@@ -71,6 +71,7 @@ function QLessEvents:subscribe(events, cb)
 
   local n, closed = 0, self._redis:closed()
   for _, event in ipairs(events) do
+    --! @todo subscribe to multiple channels at once
     if not self._events[event] then
       self._events[event] = true
       if not closed then
@@ -97,12 +98,22 @@ function QLessEvents:subscribe(events, cb)
   end
 end
 
-function QLessEvents:unsubscribe(cb)
+function QLessEvents:unsubscribe(events, cb)
   if self._redis:closed() then
     return uv.defer(cb, self, self._last_redis_error or err)
   end
 
-  return self._redis:unsubscribe(cb)
+  if is_callable(events) then
+    return self._redis:unsubscribe(pass_self(self, events))
+  end
+
+  if not events then return self._redis:unsubscribe() end
+
+  local ev = {}
+  for k, v in ipairs(events) do ev[k] = ql_ns .. v end
+  if cb then ev[#ev + 1] = pass_self(self, cb) end
+
+  return self._redis:unsubscribe(unpack(ev))
 end
 
 function QLessEvents:on(event, cb)
