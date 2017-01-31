@@ -218,10 +218,9 @@ function QLessWorkerSerial:shutdown()
 end
 
 function QLessWorkerSerial:close(cb)
+  self._fetch_timer:close()
   self._events:close()
-  self:deregister(function()
-    self._client:close(cb)
-  end)
+  self:deregister(function() self._client:close(cb) end)
 end
 
 function QLessWorkerSerial:continuing()

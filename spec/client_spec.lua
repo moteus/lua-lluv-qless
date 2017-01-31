@@ -1455,6 +1455,61 @@ describe('QLess test', function()
 
   end)
 
+  describe('Basic tests about the Workers classes', function()
+    describe('Test the Serial worker', function()
+      local worker, queue, timeout
+
+      it('worker should limits the number of jobs it runs', function(done) async()
+        worker = assert.qless_class('Worker::Serial', QLess.Worker.Serial.new{
+          redis     = client:new_redis_connection();
+          logger    = client.logger;
+          queues    = {'foo'};
+          concurent = 3;
+        })
+        local n = 5
+        for i = 1, n do queue:put('Foo', {}, function(_, err) assert_nil(err) end) end
+
+        local concurent, max_concurent, total = 0, 0, 0
+
+        local function done_test()
+          assert_equal(3, max_concurent)
+          assert_equal(0, concurent)
+          assert_equal(n, total)
+          worker:shutdown()
+          done()
+        end
+
+        KlassUtils.preload('Foo', {perform=function(job, done)
+          concurent = concurent + 1
+          if max_concurent < concurent then max_concurent = concurent end
+          uv.timer():start(500, function()
+            concurent = concurent - 1
+            total = total + 1
+            done()
+            if total == n then uv.defer(done_test) end
+          end):unref()
+        end})
+
+        worker:run()
+      end)
+
+      before_each(function()
+        timeout = loop.set_timeout(20)
+        queue = assert.qless_class('Queue', client:queue('foo'))
+      end)
+
+      after_each(function(done) async()
+        loop.set_timeout(timeout)
+        if worker then
+          worker:close(function() done() end)
+          worker = nil
+        else 
+          done()
+        end
+      end)
+    end)
+  end)
+
   before_each(function(done) async()
     TestSetup.before_each({}, function(ctx)
       client, redis = ctx.client, ctx.redis
