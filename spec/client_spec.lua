@@ -1636,6 +1636,99 @@ describe('QLess test', function()
     end)
   end)
 
+  describe('Test reconnect to Redis', function()
+    local timeout
+    local ENOTCONN = uv.error('LIBUV', uv.ENOTCONN)
+    local ECONNRESET = uv.error('LIBUV', uv.ECONNRESET)
+
+    describe('Client reconnect', function()
+      it('Client should reconnect', function(done) async()
+        local c1, c2
+      
+        client:job('jid', function(_, err)
+          assert.same(ECONNRESET, err)
+          c1 = true
+        end)
+
+        --! @fixme do not use private `stream` object
+        client._redis._stream:halt(ECONNRESET)
+
+        client:job('jid', function(_, err)
+          assert.same(ECONNRESET, err)
+          c2 = true
+        end)
+
+        uv.timer():start(8000, function()
+          assert.truthy(c1)
+          assert.truthy(c2)
+          client:job('jid', function(_, err)
+            assert_nil(err)
+            done()
+          end)
+        end)
+      end)
+    end)
+
+    describe('Events reconnect', function()
+      it('Events should reconnect and resubscribe', function(done) async()
+        local popped, c1, c2 = 0
+
+        local queue = client:queue('foo')
+        queue:put('Foo', {}, function(_, err, jid) assert_nil(err)
+          client:job(jid, function(_, err, job) assert_nil(err)
+            job:track(function(_, err) assert_nil(err)
+              c1 = true
+            end)
+          end)
+        end)
+
+        events = client:events()
+
+        events:on('popped', function(self, event, data)
+          assert_equal(events, self) assert_equal('popped', event)
+          popped = popped + 1
+        end)
+
+        events:subscribe({'canceled', 'timeout', 'popped'}, function(_, err)
+          assert.same(ECONNRESET, err)
+          c2 = true
+        end)
+
+        --! @fixme do not use private `stream` object
+        events._redis._stream:halt(ECONNRESET)
+
+        uv.timer():start(8000, function()
+          assert.truthy(c1)
+          assert.truthy(c2)
+          queue:pop(function(_, err, job)
+            assert_nil(err) assert.qless_class('Job', job)
+            uv.timer():start(500, function()
+              assert_equal(1, popped)
+              done()
+            end)
+          end)
+        end)
+      end)
+
+      after_each(function(done) async()
+        if events then
+          events:close(function() done() end)
+          events = nil
+        else done() end
+      end)
+
+    end)
+
+    before_each(function()
+      timeout = loop.set_timeout(15)
+    end)
+
+    after_each(function()
+      loop.set_timeout(timeout)
+    end)
+
+  end)
+
   before_each(function(done) async()
     TestSetup.before_each({}, function(ctx)
       client, redis = ctx.client, ctx.redis
