@@ -486,6 +486,40 @@ describe('QLess test', function()
   describe('Tests about events', function()
     local events
 
+    describe('test Event class', function()
+      it('allows call close twice', function(done) async()
+        local c1, c2
+
+        uv.timer():start(1000, function()
+          assert.truthy(c1)
+          assert.truthy(c2)
+          done()
+        end)
+
+        events:close(function() c1 = true end)
+        events:close(function() c2 = true end)
+      end)
+
+      it('allows call closed client', function(done) async()
+        local c1, c2
+
+        uv.timer():start(1000, function()
+          assert.truthy(c1)
+          done()
+        end)
+
+        events:close(function()
+          uv.defer(function()
+            events:close(function(_, err)
+              c1 = true
+              assert.not_nil(err)
+              assert_equal('ENOTCONN', err:name())
+            end)
+          end)
+        end)
+      end)
+    end)
+
     describe('Ensure we can get a basic event', function()
       it('Basic set/get/unset', function(done) async()
         local popped = 0

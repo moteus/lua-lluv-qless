@@ -6,7 +6,7 @@ local EventEmitter  = require "EventEmitter"
 
 local dummy, is_callable = Utils.dummy, Utils.is_callable
 
-local reconnect_redis = Utils.reconnect_redis
+local reconnect_redis, call_q = Utils.reconnect_redis, Utils.call_q
 
 local ENOTCONN = uv.error('LIBUV', uv.ENOTCONN)
 
@@ -23,6 +23,8 @@ function QLessEvents:__init(client)
   self._redis  = client:new_redis_connection()
   self._ee     = EventEmitter.new{self=self}
   self._events = {}
+
+  self._close_q = ut.Queue.new()
 
   self._redis:on_message(function(_, channel, ...)
     channel = string.sub(channel, #ql_ns + 1)
@@ -120,11 +122,21 @@ function QLessEvents:off(event, cb)
 end
 
 function QLessEvents:close(cb)
-  self._reconnect_redis:close(function()
-    self._redis:close(function(_, ...)
-      if cb then cb(self, ...) end
+  if cb then
+    if not self._close_q then
+      return uv.defer(cb, self, ENOTCONN)
+    end
+    self._close_q:push(cb)
+  end
+
+  if not (self._reconnect_redis:closed() or self._reconnect_redis:closing()) then
+    self._reconnect_redis:close(function()
+      self._redis:close(function(_, ...)
+        call_q(self._close_q, self, ...)
+        self._close_q = nil
+      end)
     end)
-  end)
+  end
 end
 
 end
