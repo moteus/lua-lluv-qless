@@ -151,6 +151,14 @@ local function super(self, m, ...)
   return self.__base[m](self, ...)
 end
 
+local function call_q(q, ...)
+  while true do
+    local cb = q:pop()
+    if not cb then break end
+    cb(...)
+  end
+end
+
 Utils = {
   super           = super;
   now             = now;
@@ -165,6 +173,7 @@ Utils = {
   json            = json;
   reconnect_redis = reconnect_redis;
   dummy_logger    = DummyLogger;
+  call_q          = call_q;
 }
 
 end

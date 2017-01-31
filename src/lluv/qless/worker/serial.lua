@@ -26,6 +26,11 @@ local DEFAULT = {
 function QLessWorkerSerial:__init(options)
   self.__base.__init(self)
 
+  assert(type(options) == 'table', 'Optrions have to be a table')
+  assert(type(options.queues) == 'table', 'Optrions.queues have to be a array')
+
+  options = options or {}
+
   local reserver = options.reserver or 'ordered'
   if type(reserver) == 'string' then
     reserver = require ("lluv.qless.reserver." .. reserver)
@@ -99,7 +104,6 @@ function QLessWorkerSerial:run()
     lock_lost_jobs[job.jid] = nil
 
     if not (lock_lost or job.state_changed) then
-      print(job.jid, 'done', err, ';', res)
       if err then
         --! @todo better formatting group/error message
         if (type(err) == 'table') and err.cat then

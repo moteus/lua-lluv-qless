@@ -3,19 +3,17 @@ local prequire = function(m)
   if ok then return m end
 end
 
-local TestSetup = prequire"spec.setup" or require "setup"
+local srequire = function(m)
+  return prequire('spec.'..m) or require(m)
+end
+
+local TestSetup = srequire"setup"
 local QLess     = require "lluv.qless"
 local uv        = require "lluv"
-
--- A dummy jobs
-local Foo = KlassUtils.preload('Foo', {})
+local loop      = require "lluv.busted.loop"
 
 describe('QLess test', function()
   local client, redis
-
-  local assert_equal = assert.equal
-  local assert_same  = assert.same
-  local assert_nil   = assert.is_nil
 
   describe('Basic tests about the client', function()
 
@@ -39,6 +37,38 @@ describe('QLess test', function()
                   done()
                 end)
               end)
+            end)
+          end)
+        end)
+      end)
+
+      it('allows call close twice', function(done) async()
+        local c1, c2
+
+        uv.timer():start(1000, function()
+          assert.truthy(c1)
+          assert.truthy(c2)
+          done()
+        end)
+
+        client:close(function() c1 = true end)
+        client:close(function() c2 = true end)
+      end)
+
+      it('allows call closed client', function(done) async()
+        local c1, c2
+
+        uv.timer():start(1000, function()
+          assert.truthy(c1)
+          done()
+        end)
+
+        client:close(function()
+          uv.defer(function()
+            client:close(function(_, err)
+              c1 = true
+              assert.not_nil(err)
+              assert_equal('ENOTCONN', err:name())
             end)
           end)
         end)
@@ -944,7 +974,12 @@ describe('QLess test', function()
         end)
       end)
 
+      before_each(function()
+        KlassUtils.preload('Foo', {})
+      end)
+
       after_each(function()
+        KlassUtils.unload('Foo')
         KlassUtils.unload('Boo')
       end)
     end)
