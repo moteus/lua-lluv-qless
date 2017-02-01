@@ -541,6 +541,21 @@ describe('QLess test', function()
     end)
 
     describe('Ensure we can get a basic event', function()
+
+      it('Ensure we can subscribe from multiple events', function(done) async()
+        events:unsubscribe({'popped', 'timeout'}, function(self, err, res)
+          assert_nil(err)
+          done()
+        end)
+      end)
+
+      it('Ensure we can unsubscribe from multiple events', function(done) async()
+        events:unsubscribe({'popped', 'timeout'}, function(self, err, res)
+          assert_nil(err)
+          done()
+        end)
+      end)
+
       it('Basic set/get/unset', function(done) async()
         local popped = 0
 
@@ -1641,6 +1656,12 @@ describe('QLess test', function()
     local ENOTCONN = uv.error('LIBUV', uv.ENOTCONN)
     local ECONNRESET = uv.error('LIBUV', uv.ECONNRESET)
 
+    local function reset_connection(object, err)
+      err = err or ECONNRESET
+      --! @fixme do not use private `stream` object
+      object._redis._stream:halt(err)
+    end
+
     describe('Client reconnect', function()
       it('Client should reconnect', function(done) async()
         local c1, c2
@@ -1650,8 +1671,7 @@ describe('QLess test', function()
           c1 = true
         end)
 
-        --! @fixme do not use private `stream` object
-        client._redis._stream:halt(ECONNRESET)
+        reset_connection(client)
 
         client:job('jid', function(_, err)
           assert.same(ECONNRESET, err)
@@ -1695,7 +1715,7 @@ describe('QLess test', function()
         end)
 
         --! @fixme do not use private `stream` object
-        events._redis._stream:halt(ECONNRESET)
+        reset_connection(events)
 
         uv.timer():start(8000, function()
           assert.truthy(c1)

@@ -73,7 +73,6 @@ function QLessEvents:subscribe(events, cb)
 
   local n, closed = 0, self._redis:closed()
   for _, event in ipairs(events) do
-    --! @todo subscribe to multiple channels at once
     if not self._events[event] then
       self._events[event] = true
       if not closed then
@@ -112,10 +111,19 @@ function QLessEvents:unsubscribe(events, cb)
   if not events then return self._redis:unsubscribe() end
 
   local ev = {}
-  for k, v in ipairs(events) do ev[k] = ql_ns .. v end
-  if cb then ev[#ev + 1] = pass_self(self, cb) end
+  for k, v in ipairs(events) do
+    self._events[v] = nil
+    ev[k] = ql_ns .. v
+  end
 
-  return self._redis:unsubscribe(unpack(ev))
+  local n = 0
+  for _, event in ipairs(ev) do
+    self._redis:unsubscribe(event, function(_, ...)
+      n = n + 1
+      if n == #ev then return cb(self, ...) end
+    end)
+  end
+
 end
 
 function QLessEvents:on(event, cb)
