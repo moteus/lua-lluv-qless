@@ -26,9 +26,11 @@ function QLessEvents:__init(client)
 
   self._close_q = ut.Queue.new()
 
-  self._redis:on_message(function(_, channel, ...)
-    channel = string.sub(channel, #ql_ns + 1)
-    self._ee:emit(channel, ...)
+  self._redis:on_message(function(_, messsage, event, ...)
+    if messsage ~= 'message' then return end
+
+    event = string.sub(event, #ql_ns + 1)
+    self._ee:emit(event, ...)
   end)
 
   self._last_redis_error = ENOTCONN
@@ -83,7 +85,7 @@ function QLessEvents:subscribe(events, cb)
           else
             self._client.logger.info('%s: subscribe %s - pass', tostring(self), event, tostring(err))
           end
-          if n == 0 then cb(self, err, res) end
+          if n == 0 then cb(self, err, not err) end
         end)
       end
     end
