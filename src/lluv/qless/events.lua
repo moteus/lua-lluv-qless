@@ -26,12 +26,17 @@ function QLessEvents:__init(client)
 
   self._close_q = ut.Queue.new()
 
-  self._redis:on_message(function(_, messsage, event, ...)
-    if messsage ~= 'message' then return end
+  local on_message = function(event, ...)
+    if string.find(event, "^ql:") then
+      event = string.sub(event, #ql_ns + 1)
+    end
 
-    event = string.sub(event, #ql_ns + 1)
     self._ee:emit(event, ...)
-  end)
+  end
+
+  self._redis:on('message', function(_, _, ...) on_message(...) end)
+
+  self._redis:on('pmessage', function(_, _, _, ...) on_message(...) end)
 
   self._reconnect_redis = reconnect_redis(self._redis, 5000, function()
     self._client.logger.info('%s: connected to redis server', tostring(self))
