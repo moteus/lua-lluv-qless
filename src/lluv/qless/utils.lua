@@ -100,36 +100,38 @@ local function read_sha1_file(fname)
 end
 
 -- create monitoring timer to be able to reconnect redis connection
+-- close this timer before close connection object
 local function reconnect_redis(cnn, interval, on_connect, on_disconnect)
-  local error_handler, timer, connected
 
-  timer = uv.timer():start(0, interval, function(self)
+  local timer = uv.timer():start(0, interval, function(self)
     self:stop()
-    cnn:open(error_handler)
+    cnn:open()
   end):stop()
 
-  error_handler = function(_, err)
-    if err and connected then
-      on_disconnect(cnn, err)
+  local connected = not cnn:closed()
+
+  cnn:on('close', function(self, event, ...)
+    local flag = connected
+
+    connected = false
+
+    if flag then on_disconnect(self, ...) end
+
+    if timer:closed() or timer:closing() then
+      return
     end
 
-    connected = not err
+    timer:again()
+  end)
 
-    if connected then
-      return on_connect(cnn)
-    end
+  cnn:on('ready', function(self, event, ...)
+    connected = true
+    on_connect(self, ...)
+  end)
 
-    if not timer:closed() then
-      timer:again()
-    end
+  if not connected then
+    cnn:open()
   end
-
-  -- so we can pass first connect error
-  connected = true
-
-  cnn:open(error_handler)
-
-  cnn:on_error(error_handler)
 
   return timer
 end

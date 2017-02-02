@@ -33,12 +33,8 @@ function QLessEvents:__init(client)
     self._ee:emit(event, ...)
   end)
 
-  self._last_redis_error = ENOTCONN
-
   self._reconnect_redis = reconnect_redis(self._redis, 5000, function()
     self._client.logger.info('%s: connected to redis server', tostring(self))
-
-    self._last_redis_error = nil
 
     for event in pairs(self._events) do
       self._redis:subscribe(ql_ns .. event, function(_, err, res)
@@ -57,8 +53,6 @@ function QLessEvents:__init(client)
         self._client.logger.info('%s: disconnected from redis server', tostring(self))
       end
     end
-
-    self._last_redis_error = err or ENOTCONN
   end)
 
   return self
@@ -71,27 +65,21 @@ end
 function QLessEvents:subscribe(events, cb)
   cb = cb or dummy
 
-  local n, closed = 0, self._redis:closed()
+  local n = 0
   for _, event in ipairs(events) do
     if not self._events[event] then
       self._events[event] = true
-      if not closed then
-        n = n + 1
-        self._redis:subscribe(ql_ns .. event, function(_, err, res)
-          n = n - 1
-          if err then
-            self._client.logger.error('%s: subscribe %s - fail: %s', tostring(self), event, tostring(err))
-          else
-            self._client.logger.info('%s: subscribe %s - pass', tostring(self), event, tostring(err))
-          end
-          if n == 0 then cb(self, err, not err) end
-        end)
-      end
+      n = n + 1
+      self._redis:subscribe(ql_ns .. event, function(_, err, res)
+        n = n - 1
+        if err then
+          self._client.logger.error('%s: subscribe %s - fail: %s', tostring(self), event, tostring(err))
+        else
+          self._client.logger.info('%s: subscribe %s - pass', tostring(self), event, tostring(err))
+        end
+        if n == 0 then cb(self, err, not err) end
+      end)
     end
-  end
-
-  if closed then
-    return uv.defer(cb, self, self._last_redis_error or ENOTCONN)
   end
 
   if n == 0 then
@@ -100,10 +88,6 @@ function QLessEvents:subscribe(events, cb)
 end
 
 function QLessEvents:unsubscribe(events, cb)
-  if self._redis:closed() then
-    return uv.defer(cb, self, self._last_redis_error or err)
-  end
-
   if is_callable(events) then
     return self._redis:unsubscribe(pass_self(self, events))
   end

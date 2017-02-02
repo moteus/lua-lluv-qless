@@ -11,6 +11,7 @@ if not prequire"spec.spec_helper" then require "spec_helper" end
 local QLess = require "lluv.qless"
 local uv    = require "lluv"
 local ut    = require "lluv.utils"
+local stp   = prequire"StackTracePlus"
 
 QLess.Reserver = {
   Ordered = require "lluv.qless.reserver.ordered"
@@ -20,10 +21,6 @@ QLess.Worker = {
   Serial = require "lluv.qless.worker.serial"
 }
 
-local stp do local ok
-ok, stp = pcall(require, "StackTracePlus")
-if not ok then stp = nil end
-end
 
 local logger if pcall(require, "log") then
   logger = require "log".new('warning', require 'log.writer.stdout'.new())
