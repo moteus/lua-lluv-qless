@@ -23,6 +23,10 @@ local DEFAULT = {
   concurent = 1;
 }
 
+local LOCK_LOST_EVENTS = {
+  lock_lost=true, canceled=true,
+}
+
 function QLessWorkerSerial:__init(options)
   self.__base.__init(self)
 
@@ -168,7 +172,7 @@ function QLessWorkerSerial:run()
     self._active_jobs = self._active_jobs + 1
 
     self._ee:on(job.jid, function(_, jid, data)
-      if data.event == 'lock_lost' then
+      if data.event and LOCK_LOST_EVENTS[data.event] then
         lock_lost_jobs[jid] = true
       end
       job:emit(data.event, data)

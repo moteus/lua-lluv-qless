@@ -400,11 +400,18 @@ function QLessJob:emit(...)
   if self._ee then self._ee:emit(...) end
 end
 
-function QLessJob:on(...)
+function QLessJob:on(event, handler)
   if not self._ee then
     self._ee = EventEmitter.new{self=self}
   end
-  self._ee:on(...)
+
+  if type(event) == 'table' then
+    for _, e in ipairs(event) do
+      self._ee:on(e, handler)
+    end
+  else
+    self._ee:on(event, handler)
+  end
 end
 
 function QLessJob:onAny(...)
@@ -414,9 +421,14 @@ function QLessJob:onAny(...)
   self._ee:onAny(...)
 end
 
-function QLessJob:off(...)
-  if self._ee then
-    self._ee:off(...)
+function QLessJob:off(event, ...)
+  if not self._ee then return end
+  if type(event) == 'table' then
+    for _, e in ipairs(event) do
+      self._ee:off(e, ...)
+    end
+  else
+    self._ee:off(event, ...)
   end
 end
 

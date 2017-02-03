@@ -1099,6 +1099,22 @@ describe('QLess test', function()
         end)
       end)
 
+      it('Allows subscribe to multiple events', function(done) async()
+        queue:put('Foo', {}, function(_, err, jid) assert_nil(err)
+          client:job(jid, function(_, err, job) assert_nil(err)
+            local events = {}
+            job:on({'lock_lost', 'canceled'}, function(self, event)
+              events[#events + 1] = event
+            end)
+            job:emit('lock_lost')
+            job:emit('canceled')
+            job:emit('foo')
+            assert.same({'lock_lost', 'canceled'}, events)
+            done()
+          end)
+        end)
+      end)
+
       before_each(function()
         KlassUtils.preload('Foo', {})
       end)
