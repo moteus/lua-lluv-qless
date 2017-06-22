@@ -387,7 +387,7 @@ function QLessJob:begin_state_change(event)
 end
 
 function QLessJob:finish_state_change(event, err)
-  -- if we reach to server and it return error than we can assume than
+  -- if we reach to server and it return error than we can assume that
   -- state is canged. E.g. we lost lock but notify lost.
   if (not err) or (QLessError.is(QLessError.LuaScript, err)) then
     self.state_changed = true

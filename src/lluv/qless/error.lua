@@ -1,8 +1,5 @@
 local ut = require "lluv.utils"
-
-local function super(self, m, ...)
-  return self.__base[m](self, ...)
-end
+local super = require "lluv.qless.utils".super
 
 local QLessErrorClassesNames = {}
 
@@ -70,6 +67,8 @@ end
 -------------------------------------------------------------------------------
 local QLessLuaScriptError = ut.class(QLessError) do
 
+local super = function(...) return super(QLessLuaScriptError, ...) end
+
 -- @classmethod
 local pat = 'user_script:(%d+):%s*(.-)%s*$'
 function QLessLuaScriptError.match(s)
@@ -98,6 +97,8 @@ end
 
 -------------------------------------------------------------------------------
 local QLessLockLostError = ut.class(QLessError) do
+
+local super = function(...) return super(QLessLockLostError, ...) end
 
 local single
 

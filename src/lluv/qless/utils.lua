@@ -149,8 +149,10 @@ local DummyLogger = {} do
   end
 end
 
-local function super(self, m, ...)
-  return self.__base[m](self, ...)
+local function super(class, self, m, ...)
+  if class.__base and class.__base[m] then
+    return class.__base[m](self, ...)
+  end
 end
 
 local function call_q(q, ...)
