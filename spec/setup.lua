@@ -71,7 +71,7 @@ local setup = function(ctx, done)
 
   local verify_redis_version = function(res)
     local version = assert.string(res.server.redis_version)
-    assert.truthy(V(version) >= V'2.2' and V(version) < V'4.0', 'Unsupported Redis version:' .. version)
+    assert.truthy(V(version) >= V'2.2' and V(version) < V'5.0', 'Unsupported Redis version:' .. version)
     done(ctx)
   end
 
