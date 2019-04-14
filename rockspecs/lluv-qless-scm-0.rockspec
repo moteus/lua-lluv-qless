@@ -50,7 +50,7 @@ build = {
 
     -- qless core library
     ["lluv.qless.lib.qless"        ] = "src/lluv/qless/lib/qless.lua",
-    ["lluv.qless.lib.qless-lib "   ] = "src/lluv/qless/lib/qless-lib.lua",
+    ["lluv.qless.lib.qless-lib"    ] = "src/lluv/qless/lib/qless-lib.lua",
   }
 }
 
