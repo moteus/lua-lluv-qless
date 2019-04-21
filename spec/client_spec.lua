@@ -9,7 +9,7 @@ local prequire = function(m)
 end
 
 local srequire = function(m)
-  return prequire('spec.'..m) or require(m)
+  return require('spec.'..m) or require(m)
 end
 
 local TestSetup = srequire"setup"

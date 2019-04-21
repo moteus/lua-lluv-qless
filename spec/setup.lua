@@ -6,7 +6,7 @@ local prequire = function(m)
   if ok then return m end
 end
 
-if not prequire"spec.spec_helper" then require "spec_helper" end
+if not require "spec.spec_helper" then require "spec_helper" end
 
 local QLess = require "lluv.qless"
 local uv    = require "lluv"
