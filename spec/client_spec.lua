@@ -1612,41 +1612,35 @@ describe('QLess test', function()
 
         queue:put('Foo', {}, function(_, err) assert_nil(err) end)
 
-        local called
+        local timer, timeout_called, lock_called
 
         local function done_test()
-          assert.truthy(called)
-          done()
+          worker:shutdown()
+          timer:close()
+          uv.defer(function() done() end)
+          assert.truthy(timeout_called)
+          assert.truthy(lock_called)
         end
 
-        KlassUtils.preload('Foo', {perform=function(job, done)
-          -- stop fetch next job
-          worker:shutdown()
+        timer = uv.timer():start(500, function()
+          uv.defer(done_test)
+        end):unref()
 
+        KlassUtils.preload('Foo', {perform=function(job, done)
           -- mark job as timeout
           client:job(job.jid, function(_, err, job)
             assert_nil(err) assert.qless_class('Job', job)
             job:timeout(function(self, err, res)
               assert_equal(job, self) assert_nil(err) assert_nil(res)
+              timeout_called = true
             end)
           end)
 
-          -- do some work
-          local timer = uv.timer():start(500, function()
-            done()
-            uv.defer(done_test)
-          end):unref()
-
           job:on('lock_lost', function()
             job:off('lock_lost')
-
-            timer:close()
-            called, timer = true
-
-            done()
+            lock_called = true
             uv.defer(done_test)
           end)
-
         end})
 
         worker:run()
@@ -1662,10 +1656,22 @@ describe('QLess test', function()
 
         queue:put('Foo', {}, function(_, err) assert_nil(err) end)
 
-        KlassUtils.preload('Boo.Foo', {perform=function(job, done)
-          -- stop fetch next job
+        local timer, called
+
+        local function done_test()
           worker:shutdown()
-          done()
+          timer:close()
+          uv.defer(function() done() end)
+          assert.truthy(called)
+        end
+
+        timer = uv.timer():start(500, function()
+            uv.defer(done_test)
+        end):unref()
+
+        KlassUtils.preload('Boo.Foo', {perform=function(job, done)
+          called = true
+          uv.defer(done_test)
         end})
 
         worker:run()
