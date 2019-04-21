@@ -1,5 +1,8 @@
 io.stdout:setvbuf'no';io.stderr:setvbuf'no';
 
+-- Lua 5.2/5.3
+package.path = './?.lua;' .. package.path
+
 local prequire = function(m)
   local ok, m = pcall(require, m)
   if ok then return m end
@@ -1659,18 +1662,10 @@ describe('QLess test', function()
 
         queue:put('Foo', {}, function(_, err) assert_nil(err) end)
 
-        local called
-
-        local function done_test()
-          assert.truthy(called)
-          done()
-        end
-
         KlassUtils.preload('Boo.Foo', {perform=function(job, done)
           -- stop fetch next job
           worker:shutdown()
           done()
-          uv.defer(done_test)
         end})
 
         worker:run()
