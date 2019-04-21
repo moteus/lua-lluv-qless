@@ -14,8 +14,8 @@ matrix:
       os: linux
     - env: LUA="luajit 2.1"
       os: linux
-    - env: LUA="lua 5.1"
-      os: osx
+    # - env: LUA="lua 5.1"
+    #   os: osx
 
 addons:
   apt:
@@ -48,6 +48,7 @@ install:
   - luarocks show bgcrypto-sha > /dev/null 2>&1 || luarocks install bgcrypto-sha --server=http://luarocks.org/dev
   - luarocks show lluv-redis   > /dev/null 2>&1 || luarocks install lluv-redis --server=http://luarocks.org/dev
   - luarocks show luaposix     > /dev/null 2>&1 || luarocks install luaposix
+  - luarocks show luasocket    > /dev/null 2>&1 || luarocks install luasocket --from https://luarocks.org/dev
   - luarocks make rockspecs/lluv-qless-scm-0.rockspec
 
 before_script:
