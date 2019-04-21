@@ -1649,6 +1649,33 @@ describe('QLess test', function()
         worker:run()
       end)
 
+      it('worker should apply class prefix', function(done) async()
+        worker = assert.qless_class('Worker::Serial', QLess.Worker.Serial.new{
+          redis        = client:new_redis_connection();
+          logger       = client.logger;
+          klass_prefix = 'Boo.';
+          queues       = {'foo'};
+        })
+
+        queue:put('Foo', {}, function(_, err) assert_nil(err) end)
+
+        local called
+
+        local function done_test()
+          assert.truthy(called)
+          done()
+        end
+
+        KlassUtils.preload('Boo.Foo', {perform=function(job, done)
+          -- stop fetch next job
+          worker:shutdown()
+          done()
+          uv.defer(done_test)
+        end})
+
+        worker:run()
+      end)
+
       before_each(function()
         timeout = loop.set_timeout(20)
         queue = assert.qless_class('Queue', client:queue('foo'))
@@ -1656,6 +1683,7 @@ describe('QLess test', function()
 
       after_each(function(done) async()
         KlassUtils.unload('Foo')
+        KlassUtils.unload('Foo.Boo')
         loop.set_timeout(timeout)
         if worker then
           worker:close(function() done() end)

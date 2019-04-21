@@ -48,6 +48,7 @@ function QLessWorkerSerial:__init(options)
   self._fetch_timer   = uv.timer()
   self._max_jobs      = options.concurent or DEFAULT.concurent
   self._poll_interval = options.interval  or DEFAULT.interval
+  self._klass_prefix  = options.klass_prefix
   self._active_jobs   = 0
   self._paused        = false
 
@@ -177,6 +178,10 @@ function QLessWorkerSerial:run()
       end
       job:emit(data.event, data)
     end)
+
+    if self._klass_prefix then
+      job.klass_prefix = self._klass_prefix
+    end
 
     job:perform(on_perform, self._ee)
 
