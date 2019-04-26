@@ -6,14 +6,16 @@ matrix:
   include:
     - env: LUA="lua 5.1"
       os: linux
-    - env: LUA="lua 5.2"
-      os: linux
-    - env: LUA="lua 5.3"
-      os: linux
+    # lua-cjson does not work on Lua 5.2/3
+    # - env: LUA="lua 5.2"
+    #   os: linux
+    # - env: LUA="lua 5.3"
+    #   os: linux
     - env: LUA="luajit 2.0"
       os: linux
     - env: LUA="luajit 2.1"
       os: linux
+    # no Redis for OSX
     # - env: LUA="lua 5.1"
     #   os: osx
 
