@@ -129,7 +129,7 @@ function QLessWorkerSerial:run()
     end
 
     if self:continuing() then
-      local n = self._reserver:progressed() + self._active_jobs
+      local n = self:count_owned_jobs()
       if n < self._max_jobs then
         self._fetch_timer:stop()
         self._reserver:reserve(on_reserve)
@@ -138,7 +138,7 @@ function QLessWorkerSerial:run()
     end
 
     if self._shutdown then
-      local n = self._reserver:progressed() + self._active_jobs
+      local n = self:count_owned_jobs()
       if n == 0 then self:close() end
       return
     end
@@ -151,7 +151,7 @@ function QLessWorkerSerial:run()
     if self._shutdown then
       if job then job:retry() end
 
-      local n = self._reserver:progressed() + self._active_jobs
+      local n = self:count_owned_jobs()
       if n == 0 then self:close() end
       return
     end
@@ -186,7 +186,7 @@ function QLessWorkerSerial:run()
     job:perform(on_perform, self._ee)
 
     if self:continuing() then
-      local n = reserver:progressed() + self._active_jobs
+      local n = self:count_owned_jobs()
       if n < self._max_jobs then
         return reserver:reserve(on_reserve)
       end
@@ -212,7 +212,7 @@ end
 function QLessWorkerSerial:unpause()
   self._paused = false;
   if not self._shutdown then
-    local n = self._reserver:progressed() + self._active_jobs
+    local n = self:count_owned_jobs()
     if n < self._max_jobs then
       self._fetch_timer:again(self._poll_interval)
     end
@@ -222,7 +222,7 @@ end
 function QLessWorkerSerial:shutdown()
   self._fetch_timer:stop()
   self._shutdown = true
-  local n = self._reserver:progressed() + self._active_jobs
+  local n = self:count_owned_jobs()
   if n == 0 then self:close() end
 end
 
@@ -240,6 +240,11 @@ function QLessWorkerSerial:deregister(cb)
   self._client:deregister_workers({self._client.worker_name}, function(_, ...)
     if cb then return cb(self, ...) end
   end)
+end
+
+function QLessWorkerSerial:count_owned_jobs()
+  -- progressed - we already send request for ownership so assume it done
+  return self._reserver:progressed() + self._active_jobs
 end
 
 end
