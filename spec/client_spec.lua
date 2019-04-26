@@ -1665,7 +1665,7 @@ describe('QLess test', function()
           assert.truthy(called)
         end
 
-        timer = uv.timer():start(500, function()
+        timer = uv.timer():start(5000, function()
             uv.defer(done_test)
         end):unref()
 

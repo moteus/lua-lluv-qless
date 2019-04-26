@@ -181,12 +181,11 @@ function QLessQueue:pop(...)
   count, cb = count or 1, cb or dummy
 
   self.client:_call_json(self, "pop", self.name, self.worker_name, count,
-    function(self, err, res)
-      if err then return cb(self, err, res) end
+    function(self, err, jobs)
+      if err then return cb(self, err, jobs) end
 
-      local jobs = {}
-      for i = 1, #res do
-        jobs[i] = QLessJob.new(self.client, res[i])
+      for i = 1, #jobs do
+        jobs[i] = QLessJob.new(self.client, jobs[i])
       end
 
       if count == 1 then jobs = jobs[1] end
@@ -201,12 +200,11 @@ function QLessQueue:peek(...)
   count, cb = count or 1, cb or dummy
 
   self.client:_call_json(self, "peek", self.name, count,
-    function(self, err, res)
-      if err then return cb(self, err, res) end
+    function(self, err, jobs)
+      if err then return cb(self, err, jobs) end
 
-      local jobs = {}
-      for i = 1, #res do
-        jobs[i] = QLessJob.new(self.client, res[i])
+      for i = 1, #jobs do
+        jobs[i] = QLessJob.new(self.client, jobs[i])
       end
 
       if count == 1 then jobs = jobs[1] end
