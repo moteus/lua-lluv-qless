@@ -17,6 +17,13 @@ local QLess     = require "lluv.qless"
 local uv        = require "lluv"
 local loop      = require "lluv.busted.loop"
 
+print("------------------------------------")
+print("Module    name: " .. QLess._NAME);
+print("Module version: " .. QLess._VERSION);
+print("Lua    version: " .. (_G.jit and _G.jit.version or _G._VERSION))
+print("------------------------------------")
+print("")
+
 describe('QLess test', function()
   local client, redis
 

@@ -1,3 +1,15 @@
+------------------------------------------------------------------
+--
+--  Author: Alexey Melnichuk <alexeymelnichuck@gmail.com>
+--
+--  Copyright (C) 2017-2019 Alexey Melnichuk <alexeymelnichuck@gmail.com>
+--
+--  Licensed according to the included 'LICENSE' document
+--
+--  This file is part of lua-lluv-qless library.
+--
+------------------------------------------------------------------
+
 local function prequire(...)
   local ok, mod = pcall(require, ...)
   if not ok then return nil, mod end
