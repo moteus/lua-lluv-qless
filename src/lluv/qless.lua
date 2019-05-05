@@ -16,7 +16,7 @@ local QLess = {
   _VERSION   = "0.1.0-dev",
   _NAME      = "lluv-qless",
   _LICENSE   = "MIT",
-  _COPYRIGHT = "Copyright (C) 2017-2019 Alexey Melnichuk"
+  _COPYRIGHT = "Copyright (C) 2017-2019 Alexey Melnichuk",
 
   new = QLessClient.new;
   Client = QLessClient;
